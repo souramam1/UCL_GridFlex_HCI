@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GridMind — Home Energy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f2ee;
+    --ink: #1a1a18;
+    --mid: #7a7870;
+    --accent: #2d6a4f;
+    --accent-light: #b7e4c7;
+    --warm: #e9c46a;
+    --border: #d4d0c8;
+    --white: #fafaf8;
+    --card: #ffffff;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── PAGE SYSTEM ── */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  /* ── SHARED NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+  }
+  .nav-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-back {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mid);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.9rem;
+    background: transparent;
+    transition: all 0.2s;
+  }
+  .nav-back:hover { background: var(--ink); color: var(--white); border-color: var(--ink); }
+
+  /* ══════════════════════════════
+     HOME PAGE
+  ══════════════════════════════ */
+  #home {
+    align-items: stretch;
+  }
+  .home-hero {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5rem 3rem 5rem 4rem;
+    border-right: 1px solid var(--border);
+    background: var(--white);
+  }
+
+  .home-intro .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 1.5rem;
+  }
+
+  .home-intro h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+    color: var(--ink);
+  }
+  .home-intro h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .home-intro p {
+    font-size: 0.8rem;
+    line-height: 1.8;
+    color: var(--mid);
+    max-width: 30ch;
+  }
+
+  .home-actions {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .big-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 2.5rem;
+    cursor: pointer;
+    border: none;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .big-btn + .big-btn {
+    border-top: 1px solid var(--border);
+  }
+
+  .big-btn.btn-neighbourhood {
+    background: var(--ink);
+    color: var(--white);
+  }
+  .big-btn.btn-neighbourhood:hover {
+    background: #2a2a26;
+  }
+
+  .big-btn.btn-preferences {
+    background: var(--accent);
+    color: var(--white);
+  }
+  .big-btn.btn-preferences:hover {
+    background: #235c41;
+  }
+
+  .big-btn .btn-label {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 0.75rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .big-btn .btn-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    position: relative;
+    z-index: 1;
+  }
+
+  .big-btn .btn-arrow {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    font-size: 1.5rem;
+    opacity: 0.3;
+    transition: all 0.3s;
+  }
+  .big-btn:hover .btn-arrow {
+    opacity: 1;
+    transform: translate(4px, -4px);
+  }
+
+  .btn-neighbourhood .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  /* ══════════════════════════════
+     NEIGHBOURHOOD PAGE
+  ══════════════════════════════ */
+  #neighbourhood {
+    background: var(--bg);
+  }
+
+  .page-body {
+    flex: 1;
+    padding: 2.5rem;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+  .page-header .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 0.5rem;
+  }
+  .page-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+
+  /* Summary stats */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+  }
+  .stat-card .stat-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .stat-card .stat-unit {
+    font-size: 0.7rem;
+    color: var(--mid);
+    letter-spacing: 0.05em;
+  }
+  .stat-card .stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mid);
+    margin-top: 0.5rem;
+  }
+
+  /* Timeline chart */
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .chart-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mid);
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 1.2rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.65rem;
+    color: var(--mid);
+  }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  .timeline-wrap {
+    position: relative;
+    height: 160px;
+  }
+  canvas#timelineChart {
+    width: 100% !important;
+    height: 160px !important;
+  }
+
+  /* Appliance schedule grid */
+  .schedule-grid {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.75rem;
+  }
+  .schedule-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .schedule-row:last-child { margin-bottom: 0; }
+  .device-label {
+    font-size: 0.68rem;
+    color: var(--mid);
+    letter-spacing: 0.05em;
+  }
+  .schedule-bar-wrap {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 2px;
+    height: 22px;
+  }
+  .bar-cell {
+    border-radius: 2px;
+    background: var(--border);
+    transition: opacity 0.2s;
+  }
+  .bar-cell.active { background: var(--accent); }
+  .bar-cell.peak   { background: var(--warm); }
+  .bar-cell.solar  { background: #52b788; }
+
+  /* Time ruler */
+  .time-ruler {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .ruler-hours {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 2px;
+  }
+  .ruler-hour {
+    font-size: 0.55rem;
+    color: var(--mid);
+    text-align: center;
+  }
+  .ruler-hour:not(:nth-child(4n+1)) { visibility: hidden; }
+
+  /* ══════════════════════════════
+     PREFERENCES PAGE
+  ══════════════════════════════ */
+  #preferences {
+    background: var(--bg);
+  }
+
+  .pref-body {
+    flex: 1;
+    padding: 2.5rem;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 2rem;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .pref-sliders {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 2.5rem;
+  }
+
+  .pref-sliders h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+  .pref-sliders .sub {
+    font-size: 0.72rem;
+    color: var(--mid);
+    line-height: 1.7;
+    margin-bottom: 2.5rem;
+  }
+
+  .slider-group {
+    margin-bottom: 2.25rem;
+  }
+  .slider-group:last-of-type { margin-bottom: 0; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.6rem;
+  }
+  .slider-name {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink);
+  }
+  .slider-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    letter-spacing: -0.03em;
+    color: var(--accent);
+    min-width: 2ch;
+    text-align: right;
+  }
+  .slider-desc {
+    font-size: 0.65rem;
+    color: var(--mid);
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+    position: relative;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--white);
+    box-shadow: 0 0 0 2px var(--accent);
+    transition: transform 0.15s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--white);
+    box-shadow: 0 0 0 2px var(--accent);
+    cursor: pointer;
+  }
+
+  .slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    padding: 0 1px;
+  }
+  .slider-ticks span {
+    font-size: 0.55rem;
+    color: var(--border);
+  }
+  .slider-ticks span:first-child,
+  .slider-ticks span:last-child { color: var(--mid); }
+
+  .save-btn {
+    margin-top: 2.5rem;
+    width: 100%;
+    padding: 1rem;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .save-btn:hover { background: #235c41; }
+
+  .save-btn.saved {
+    background: var(--ink);
+  }
+
+  /* Sidebar info */
+  .pref-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+  }
+  .info-card .info-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mid);
+    margin-bottom: 1rem;
+  }
+
+  /* Radar chart */
+  #radarWrap {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0;
+  }
+
+  .ai-note {
+    font-size: 0.7rem;
+    line-height: 1.75;
+    color: var(--mid);
+  }
+  .ai-note strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .profile-tag {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.7rem;
+    margin-top: 0.75rem;
+  }
+
+  /* Animations */
+  .page.active .stat-card,
+  .page.active .chart-card,
+  .page.active .schedule-grid,
+  .page.active .pref-sliders,
+  .page.active .pref-sidebar > * {
+    animation: fadeUp 0.4s ease both;
+  }
+  .page.active .stat-card:nth-child(2) { animation-delay: 0.05s; }
+  .page.active .stat-card:nth-child(3) { animation-delay: 0.1s; }
+  .page.active .stat-card:nth-child(4) { animation-delay: 0.15s; }
+  .page.active .chart-card { animation-delay: 0.1s; }
+  .page.active .schedule-grid { animation-delay: 0.15s; }
+  .page.active .pref-sidebar > *:nth-child(2) { animation-delay: 0.08s; }
+  .page.active .pref-sidebar > *:nth-child(3) { animation-delay: 0.14s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .home-hero { grid-template-columns: 1fr; }
+    .home-intro { border-right: none; border-bottom: 1px solid var(--border); }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .pref-body { grid-template-columns: 1fr; }
+    nav { padding: 1rem 1.25rem; }
+    .page-body, .pref-body { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════ HOME ═══════ -->
+<div id="home" class="page active">
+  <div class="home-hero">
+    <div class="home-intro">
+      <p class="eyebrow">GridMind · Home Energy</p>
+      <h1>Intelligent<br>energy,<br><em>your way.</em></h1>
+      <p>Your AI agent continuously optimises your home's energy use against your personal priorities — comfort, cost, carbon, and convenience.</p>
+    </div>
+    <div class="home-actions">
+      <button class="big-btn btn-neighbourhood" onclick="showPage('neighbourhood')">
+        <div class="grid-bg"></div>
+        <div class="btn-arrow">↗</div>
+        <div class="btn-label">Neighbourhood<br>Overview</div>
+        <div class="btn-sub">Today's energy schedule</div>
+      </button>
+      <button class="big-btn btn-preferences" onclick="showPage('preferences')">
+        <div class="btn-arrow">↗</div>
+        <div class="btn-label">Input<br>Preferences</div>
+        <div class="btn-sub">Tell the agent your priorities</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ NEIGHBOURHOOD ═══════ -->
+<div id="neighbourhood" class="page">
+  <nav>
+    <span class="nav-logo">Grid<span>Mind</span></span>
+    <button class="nav-back" onclick="showPage('home')">← Back</button>
+  </nav>
+  <div class="page-body">
+    <div class="page-header">
+      <p class="eyebrow">Live · Wednesday 18 Feb 2026</p>
+      <h2>Neighbourhood Overview</h2>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val">47</div>
+        <div class="stat-unit">Homes</div>
+        <div class="stat-label">Active today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">3.2</div>
+        <div class="stat-unit">MW·h</div>
+        <div class="stat-label">Projected consumption</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">1.1</div>
+        <div class="stat-unit">MW·h</div>
+        <div class="stat-label">Solar generation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">34%</div>
+        <div class="stat-unit">Savings</div>
+        <div class="stat-label">vs. unoptimised</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <span>Neighbourhood Demand · 24h</span>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#2d6a4f"></div>Demand (kW)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e9c46a"></div>Grid price</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#52b788"></div>Solar</div>
+        </div>
+      </div>
+      <div class="timeline-wrap">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+
+    <div class="schedule-grid">
+      <div class="chart-title" style="margin-bottom:1rem">
+        <span>Appliance Scheduling · by device type</span>
+      </div>
+
+      <!-- rows injected by JS -->
+      <div id="scheduleRows"></div>
+
+      <div class="time-ruler">
+        <div></div>
+        <div class="ruler-hours" id="rulerHours"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PREFERENCES ═══════ -->
+<div id="preferences" class="page">
+  <nav>
+    <span class="nav-logo">Grid<span>Mind</span></span>
+    <button class="nav-back" onclick="showPage('home')">← Back</button>
+  </nav>
+  <div class="pref-body">
+    <div class="pref-sliders">
+      <h3>Your Priorities</h3>
+      <p class="sub">Drag each slider to tell the AI agent how to weigh your priorities. Changes take effect on the next scheduling cycle.</p>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">Comfort</span>
+          <span class="slider-value" id="val-comfort">7</span>
+        </div>
+        <p class="slider-desc">How much should the agent prioritise keeping your home at your ideal temperature and conditions, even at higher cost?</p>
+        <input type="range" min="1" max="10" value="7" id="sl-comfort" oninput="updateSlider('comfort',this.value)">
+        <div class="slider-ticks"><span>1</span><span>·</span><span>·</span><span>·</span><span>·</span><span>5</span><span>·</span><span>·</span><span>·</span><span>·</span><span>10</span></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">Carbon</span>
+          <span class="slider-value" id="val-carbon">6</span>
+        </div>
+        <p class="slider-desc">How much weight should the agent give to minimising your carbon footprint, favouring renewables even if more expensive?</p>
+        <input type="range" min="1" max="10" value="6" id="sl-carbon" oninput="updateSlider('carbon',this.value)">
+        <div class="slider-ticks"><span>1</span><span>·</span><span>·</span><span>·</span><span>·</span><span>5</span><span>·</span><span>·</span><span>·</span><span>·</span><span>10</span></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">Cost</span>
+          <span class="slider-value" id="val-cost">8</span>
+        </div>
+        <p class="slider-desc">How aggressively should the agent shift loads to cheaper time windows, potentially inconveniencing appliance timing?</p>
+        <input type="range" min="1" max="10" value="8" id="sl-cost" oninput="updateSlider('cost',this.value)">
+        <div class="slider-ticks"><span>1</span><span>·</span><span>·</span><span>·</span><span>·</span><span>5</span><span>·</span><span>·</span><span>·</span><span>·</span><span>10</span></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">Convenience</span>
+          <span class="slider-value" id="val-convenience">5</span>
+        </div>
+        <p class="slider-desc">How much should the agent maintain predictable routines and avoid rescheduling appliances mid-cycle?</p>
+        <input type="range" min="1" max="10" value="5" id="sl-convenience" oninput="updateSlider('convenience',this.value)">
+        <div class="slider-ticks"><span>1</span><span>·</span><span>·</span><span>·</span><span>·</span><span>5</span><span>·</span><span>·</span><span>·</span><span>·</span><span>10</span></div>
+      </div>
+
+      <button class="save-btn" id="saveBtn" onclick="savePrefs()">Save Preferences</button>
+    </div>
+
+    <div class="pref-sidebar">
+      <div class="info-card">
+        <p class="info-title">Priority Profile</p>
+        <div id="radarWrap">
+          <canvas id="radarChart" width="200" height="200"></canvas>
+        </div>
+        <div class="profile-tag" id="profileTag">Cost-Conscious</div>
+      </div>
+
+      <div class="info-card">
+        <p class="info-title">What the agent will do</p>
+        <p class="ai-note" id="aiNote">
+          With <strong>high cost priority</strong> and <strong>moderate comfort</strong>, the agent will aggressively shift flexible loads like washing and dishwashing to off-peak windows, while maintaining your heating schedule within ±1°C of your set point.
+        </p>
+      </div>
+
+      <div class="info-card">
+        <p class="info-title">Next cycle</p>
+        <p class="ai-note">The agent will re-optimise tonight's schedule at <strong>23:00</strong> using your updated priorities.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Navigation ── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'neighbourhood') drawTimeline();
+  if (id === 'preferences') drawRadar();
+}
+
+/* ── Timeline chart (hand-drawn canvas) ── */
+function drawTimeline() {
+  const canvas = document.getElementById('timelineChart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width * dpr;
+  canvas.height = 160 * dpr;
+  canvas.style.width  = rect.width + 'px';
+  canvas.style.height = '160px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = 160, pad = 10;
+
+  // Fake data — demand (kW), solar (kW), price (normalised)
+  const hours = 24;
+  const demand = [12,10,9,8,9,14,22,28,24,20,18,17,19,21,20,18,24,30,32,28,22,18,15,13];
+  const solar  = [0,0,0,0,0,0,1,4,9,14,17,18,16,13,10,7,3,1,0,0,0,0,0,0];
+  const price  = [2,2,2,2,2,3,4,6,5,4,3,3,4,4,3,3,5,7,7,6,4,3,2,2];
+
+  const maxD = 35, maxS = 20, maxP = 8;
+
+  function toX(i) { return pad + (i / (hours-1)) * (W - pad*2); }
+  function toY(v, max) { return H - pad - (v/max) * (H - pad*2); }
+
+  // Solar fill
+  ctx.beginPath();
+  ctx.moveTo(toX(0), H - pad);
+  solar.forEach((v,i) => ctx.lineTo(toX(i), toY(v, maxS)));
+  ctx.lineTo(toX(hours-1), H - pad);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(82,183,136,0.15)';
+  ctx.fill();
+
+  // Solar line
+  ctx.beginPath();
+  solar.forEach((v,i) => i === 0 ? ctx.moveTo(toX(i), toY(v,maxS)) : ctx.lineTo(toX(i), toY(v,maxS)));
+  ctx.strokeStyle = '#52b788';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Demand fill
+  ctx.beginPath();
+  ctx.moveTo(toX(0), H - pad);
+  demand.forEach((v,i) => ctx.lineTo(toX(i), toY(v, maxD)));
+  ctx.lineTo(toX(hours-1), H - pad);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(45,106,79,0.1)';
+  ctx.fill();
+
+  // Demand line
+  ctx.beginPath();
+  demand.forEach((v,i) => i === 0 ? ctx.moveTo(toX(i), toY(v,maxD)) : ctx.lineTo(toX(i), toY(v,maxD)));
+  ctx.strokeStyle = '#2d6a4f';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Price line (dashed)
+  ctx.beginPath();
+  ctx.setLineDash([4,4]);
+  price.forEach((v,i) => i === 0 ? ctx.moveTo(toX(i), toY(v,maxP)) : ctx.lineTo(toX(i), toY(v,maxP)));
+  ctx.strokeStyle = '#e9c46a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Time labels
+  ctx.fillStyle = '#7a7870';
+  ctx.font = '9px DM Mono, monospace';
+  ctx.textAlign = 'center';
+  [0,6,12,18,23].forEach(h => {
+    ctx.fillText(h === 0 ? '00:00' : h === 23 ? '23:00' : `${String(h).padStart(2,'0')}:00`, toX(h), H - 1);
+  });
+}
+
+/* ── Schedule rows ── */
+const devices = [
+  { name: 'Heating',     pattern: (h) => (h >= 6 && h <= 9) || (h >= 17 && h <= 22), type: 'active' },
+  { name: 'Dishwasher',  pattern: (h) => h >= 2 && h <= 4, type: 'solar' },
+  { name: 'Washing M.',  pattern: (h) => h >= 10 && h <= 12, type: 'solar' },
+  { name: 'EV Charge',   pattern: (h) => h >= 1 && h <= 5, type: 'active' },
+  { name: 'Hot Water',   pattern: (h) => (h >= 11 && h <= 13), type: 'solar' },
+  { name: 'Grid Draw',   pattern: (h) => (h >= 7 && h <= 9) || (h >= 17 && h <= 19), type: 'peak' },
+];
+
+const rows = document.getElementById('scheduleRows');
+devices.forEach(d => {
+  const row = document.createElement('div');
+  row.className = 'schedule-row';
+  const label = document.createElement('div');
+  label.className = 'device-label';
+  label.textContent = d.name;
+  const barWrap = document.createElement('div');
+  barWrap.className = 'schedule-bar-wrap';
+  for (let h = 0; h < 24; h++) {
+    const cell = document.createElement('div');
+    cell.className = 'bar-cell' + (d.pattern(h) ? ' ' + d.type : '');
+    barWrap.appendChild(cell);
+  }
+  row.appendChild(label);
+  row.appendChild(barWrap);
+  rows.appendChild(row);
+});
+
+const rulerEl = document.getElementById('rulerHours');
+for (let h = 0; h < 24; h++) {
+  const span = document.createElement('span');
+  span.className = 'ruler-hour';
+  span.textContent = String(h).padStart(2,'0');
+  rulerEl.appendChild(span);
+}
+
+/* ── Slider updates ── */
+const prefs = { comfort: 7, carbon: 6, cost: 8, convenience: 5 };
+
+function updateSlider(key, val) {
+  prefs[key] = parseInt(val);
+  document.getElementById('val-' + key).textContent = val;
+  updateAINote();
+  drawRadar();
+}
+
+function updateAINote() {
+  const { comfort, carbon, cost, convenience } = prefs;
+  const top = Object.entries(prefs).sort((a,b) => b[1]-a[1])[0][0];
+  const notes = {
+    comfort: 'With <strong>comfort as the top priority</strong>, the agent will maintain your ideal conditions at all times, shifting only non-essential loads when grid prices are very high.',
+    carbon: 'With <strong>carbon as the top priority</strong>, the agent will heavily favour solar windows and renewable-rich hours, even if this means running appliances at less convenient times.',
+    cost: 'With <strong>cost as the top priority</strong>, the agent will aggressively shift flexible loads to off-peak windows, while maintaining core comfort within a reasonable tolerance.',
+    convenience: 'With <strong>convenience as the top priority</strong>, the agent will preserve your usual routines and minimise unexpected scheduling changes, optimising within those constraints.',
+  };
+  document.getElementById('aiNote').innerHTML = notes[top];
+
+  const total = comfort + carbon + cost + convenience;
+  let tag = 'Balanced';
+  if (cost >= 8) tag = 'Cost-Conscious';
+  else if (carbon >= 8) tag = 'Eco-First';
+  else if (comfort >= 8) tag = 'Comfort-Led';
+  else if (convenience >= 8) tag = 'Routine-Keeper';
+  document.getElementById('profileTag').textContent = tag;
+}
+
+/* ── Radar chart ── */
+function drawRadar() {
+  const canvas = document.getElementById('radarChart');
+  const ctx = canvas.getContext('2d');
+  const W = 200, H = 200;
+  ctx.clearRect(0, 0, W, H);
+  const cx = W/2, cy = H/2, r = 72;
+  const keys = ['comfort','carbon','cost','convenience'];
+  const labels = ['Comfort','Carbon','Cost','Convenience'];
+  const angles = keys.map((_,i) => (i / keys.length) * Math.PI * 2 - Math.PI/2);
+
+  // Grid rings
+  [0.25,0.5,0.75,1].forEach(scale => {
+    ctx.beginPath();
+    angles.forEach((a,i) => {
+      const x = cx + Math.cos(a) * r * scale;
+      const y = cy + Math.sin(a) * r * scale;
+      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = '#d4d0c8';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // Spokes
+  angles.forEach((a,i) => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+    ctx.strokeStyle = '#d4d0c8';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Labels
+    const lx = cx + Math.cos(a)*(r+16);
+    const ly = cy + Math.sin(a)*(r+16);
+    ctx.fillStyle = '#7a7870';
+    ctx.font = '9px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(labels[i], lx, ly);
+  });
+
+  // Data polygon
+  ctx.beginPath();
+  angles.forEach((a,i) => {
+    const val = prefs[keys[i]] / 10;
+    const x = cx + Math.cos(a)*r*val;
+    const y = cy + Math.sin(a)*r*val;
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(45,106,79,0.18)';
+  ctx.fill();
+  ctx.strokeStyle = '#2d6a4f';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Dots
+  angles.forEach((a,i) => {
+    const val = prefs[keys[i]] / 10;
+    const x = cx + Math.cos(a)*r*val;
+    const y = cy + Math.sin(a)*r*val;
+    ctx.beginPath();
+    ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle = '#2d6a4f';
+    ctx.fill();
+  });
+}
+
+/* ── Save ── */
+function savePrefs() {
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '✓ Preferences Saved';
+  btn.classList.add('saved');
+  setTimeout(() => {
+    btn.textContent = 'Save Preferences';
+    btn.classList.remove('saved');
+  }, 2500);
+}
+
+// Init
+updateAINote();
+</script>
+</body>
+</html>
