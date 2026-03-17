@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
@@ -6,21 +7,38 @@ import PageTitle from '../components/PageTitle'
 import ScenarioCard from '../components/ScenarioCard'
 import './ScenariosPage.css'
 
+const SCENARIOS = [
+  { id: 1, label: 'Scenario I' },
+  { id: 2, label: 'Scenario II' },
+  { id: 3, label: 'Scenario III' },
+  { id: 4, label: 'Scenario IV' },
+]
+
 function ScenariosPage() {
+  const [selected, setSelected] = useState(null)
+
   return (
     <PageLayout variant="sidebar">
       <LeftPanel scrollable compact>
         <NavBar backTo="/simulate" />
         <PageTitle>Scenarios --</PageTitle>
         <div className="scenarios__grid">
-          <ScenarioCard label="Scenario I" to="/simulate/scenario/1" />
-          <ScenarioCard label="Scenario II" to="/simulate/scenario/2" />
-          <ScenarioCard label="Scenario III" to="/simulate/scenario/3" />
-          <ScenarioCard label="Scenario IV" to="/simulate/scenario/4" />
+          {SCENARIOS.map(s => (
+            <ScenarioCard
+              key={s.id}
+              label={s.label}
+              selected={selected === s.id}
+              onClick={() => setSelected(s.id)}
+            />
+          ))}
         </div>
       </LeftPanel>
       <RightPanel variant="action" color="blue" compact>
-        <ActionButton type="forward" to="/simulate/scenario/1" />
+        <ActionButton
+          type="forward"
+          to={selected ? `/simulate/scenario/${selected}` : '/simulate/scenarios'}
+          disabled={selected === null}
+        />
       </RightPanel>
     </PageLayout>
   )

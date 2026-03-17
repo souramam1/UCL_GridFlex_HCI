@@ -2,35 +2,50 @@
    GAME DASHBOARD PAGE
    Game Master's running simulation dashboard.
    Charts, status info, Stop/Step controls,
-   and a collapsible negotiation panel.
+   and a negotiation bar fixed at the bottom
+   that expands UPWARD and is draggable to resize.
    ============================================ */
 
-/* --- Chart Sections --- */
+/* --- Charts Area (scrollable) --- */
+
+.dashboard__charts {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 4rem; /* space so content isn't hidden behind fixed bar */
+}
 
 .dashboard__chart-section {
-  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 75%;
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .dashboard__chart-heading {
   font-family: var(--font-primary);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 .dashboard__chart-placeholder {
   width: 100%;
-  max-width: 450px;
-  aspect-ratio: 16 / 9;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
+  aspect-ratio: 16 / 10;
+  background: #3a3a3a;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-primary);
   font-size: 0.75rem;
-  color: #999;
+  color: #aaa;
 }
 
 /* --- Right Panel Status Info --- */
@@ -61,13 +76,25 @@
   gap: 1.5rem;
 }
 
-/* --- Negotiation Panel --- */
+/* --- Negotiation Bar (fixed at bottom, expands upward, draggable) --- */
+
+.dashboard__negotiation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 22vw; /* stop at the compact sidebar */
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+}
 
 .dashboard__negotiation-toggle {
   width: 100%;
   padding: 0.75rem 1rem;
   background-color: var(--color-copper);
   border: none;
+  border-radius: 0;
   cursor: pointer;
   text-align: left;
   font-family: var(--font-primary);
@@ -75,19 +102,70 @@
   font-weight: var(--font-weight-medium);
   color: #fff;
   transition: background-color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .dashboard__negotiation-toggle:hover {
   background-color: #b8774e;
 }
 
+/* --- Drag Handle --- */
+
+.dashboard__negotiation-drag {
+  flex-shrink: 0;
+  height: 12px;
+  background-color: var(--color-copper);
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard__negotiation-drag-line {
+  width: 40px;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+}
+
+.dashboard__negotiation-drag:hover .dashboard__negotiation-drag-line {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* --- Messages Panel --- */
+
 .dashboard__negotiation-panel {
   background-color: var(--color-copper);
-  padding: 1rem 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  min-height: 200px;
+  overflow: hidden;
+  height: 0;
+  padding: 0 1.5rem;
+  border-radius: 0;
+  transition: height 0.4s ease, padding 0.4s ease;
+}
+
+.dashboard__negotiation-panel--open {
+  padding: 0 1.5rem 1.5rem;
+  overflow-y: auto;
+}
+
+/* Disable transition while actively dragging for instant feedback */
+.dashboard__negotiation-panel--dragging {
+  transition: none;
+}
+
+/* --- Drag Overlay (prevents text selection while dragging) --- */
+
+.dashboard__drag-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  cursor: ns-resize;
 }
 
 /* --- Chat Bubbles --- */
@@ -126,10 +204,10 @@
 
 @media (max-width: 768px) {
   .dashboard__chart-heading {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 
-  .dashboard__chart-placeholder {
+  .dashboard__chart-section {
     max-width: 100%;
   }
 
@@ -139,5 +217,9 @@
     left: auto;
     right: auto;
     padding: 1rem;
+  }
+
+  .dashboard__negotiation {
+    right: 0; /* full width on mobile since sidebar stacks */
   }
 }

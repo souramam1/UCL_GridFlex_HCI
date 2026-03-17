@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
@@ -43,10 +44,14 @@ const SCENARIOS = {
 function ScenarioDetailPage() {
   const { scenarioId } = useParams()
   const scenario = SCENARIOS[scenarioId]
+  const [participants, setParticipants] = useState('')
 
   if (!scenario) {
     return <div className="left-panel"><p>Scenario not found.</p></div>
   }
+
+  const participantNum = Number(participants)
+  const isValid = participants !== '' && participantNum >= 1 && participantNum <= 4
 
   return (
     <PageLayout variant="sidebar">
@@ -74,12 +79,17 @@ function ScenarioDetailPage() {
             className="scenario-detail__participants-input"
             min="1"
             max="4"
-            defaultValue=""
+            value={participants}
+            onChange={e => setParticipants(e.target.value)}
           />
         </div>
       </LeftPanel>
       <RightPanel variant="action" color="blue" compact>
-        <ActionButton type="forward" to={`/game/demo-${scenarioId}/lobby`} />
+        <ActionButton
+          type="forward"
+          to={`/game/demo-${scenarioId}/lobby`}
+          disabled={!isValid}
+        />
       </RightPanel>
     </PageLayout>
   )

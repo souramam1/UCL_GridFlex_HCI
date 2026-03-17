@@ -1,0 +1,54 @@
+/* ============================================
+   PARTICIPANT WAITING PAGE
+   Shown after participant completes setup.
+   Waits for Game Master to start the simulation.
+   ============================================ */
+
+.waiting__title {
+  font-family: var(--font-primary);
+  font-size: 2.2rem;
+  font-weight: var(--font-weight-medium);
+  margin-bottom: 1.5rem;
+}
+
+.waiting__title--blue    { color: var(--color-blue); }
+.waiting__title--magenta { color: var(--color-magenta); }
+.waiting__title--green   { color: var(--color-green); }
+.waiting__title--gold    { color: var(--color-gold); }
+
+.waiting__message {
+  font-family: var(--font-primary);
+  font-size: 1rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.waiting__status {
+  margin-top: 2rem;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-light);
+  color: var(--color-text-muted);
+}
+
+/* Simple pulsing dot animation */
+.waiting__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.waiting__dot--blue    { background-color: var(--color-blue); }
+.waiting__dot--magenta { background-color: var(--color-magenta); }
+.waiting__dot--green   { background-color: var(--color-green); }
+.waiting__dot--gold    { background-color: var(--color-gold); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}

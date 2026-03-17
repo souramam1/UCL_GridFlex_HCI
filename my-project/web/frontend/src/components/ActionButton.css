@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease, transform 0.15s ease;
+  transition: background-color 0.2s ease, transform 0.15s ease, opacity 0.3s ease;
   padding: 0;
   text-decoration: none;
   color: var(--color-text);
@@ -23,6 +23,23 @@
 .action-button:hover {
   background-color: rgba(0, 0, 0, 0.08);
   transform: scale(1.05);
+}
+
+/* --- Disabled state --- */
+
+.action-button--disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.action-button--disabled:hover {
+  background-color: transparent;
+  transform: none;
+}
+
+.action-button__label--disabled {
+  opacity: 0.25;
 }
 
 .action-button__icon {
@@ -40,6 +57,7 @@
   color: var(--color-text);
   margin-top: 0.5rem;
   text-align: center;
+  transition: opacity 0.3s ease;
 }
 
 .action-button__wrapper {

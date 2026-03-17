@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
@@ -15,22 +16,52 @@ const PARTICIPANT_COLORS = ['blue', 'magenta', 'green', 'gold']
  *
  * Shows join links for each participant, coloured status bars
  * indicating who has joined, and a "Run Simulation" button.
+ * The button is disabled until all participants have joined.
+ *
+ * Reads joined participants from localStorage (temporary —
+ * will be replaced by WebSocket in production).
  *
  * Route: /game/:gameId/lobby
- * (This will eventually replace or wrap the original Lobby component.)
  */
 function GameLobbyPage() {
   const { gameId } = useParams()
-
-  // Placeholder: all 4 participants shown as joined.
-  // In production this will come from the backend via WebSocket.
   const participantCount = 4
+
+  const getJoined = useCallback(() => {
+    const key = `gridflex_joined_${gameId}`
+    return JSON.parse(localStorage.getItem(key) || '[]')
+  }, [gameId])
+
+  const [joinedIds, setJoinedIds] = useState(getJoined)
+
+  // Listen for localStorage changes from other tabs
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === `gridflex_joined_${gameId}`) {
+        setJoinedIds(JSON.parse(e.newValue || '[]'))
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+
+    // Also poll every 2s for same-tab updates
+    const interval = setInterval(() => {
+      setJoinedIds(getJoined())
+    }, 2000)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      clearInterval(interval)
+    }
+  }, [gameId, getJoined])
+
   const participants = Array.from({ length: participantCount }, (_, i) => ({
     id: i + 1,
     color: PARTICIPANT_COLORS[i],
-    joined: true,
+    joined: joinedIds.includes(i + 1),
     link: `https://gridflex_participant_${i + 1}`,
   }))
+
+  const allJoined = participants.every(p => p.joined)
 
   return (
     <PageLayout variant="sidebar">
@@ -68,8 +99,9 @@ function GameLobbyPage() {
       <RightPanel variant="action" color="blue" compact>
         <ActionButton
           type="forward"
-          to={`/game/${gameId}`}
+          to={`/game/${gameId}/dashboard`}
           label="Run Simulation"
+          disabled={!allJoined}
         />
       </RightPanel>
     </PageLayout>

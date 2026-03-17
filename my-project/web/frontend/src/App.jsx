@@ -7,8 +7,10 @@ import ScenariosPage from './pages/ScenariosPage'
 import ScenarioDetailPage from './pages/ScenarioDetailPage'
 import ParticipantPageA from './pages/ParticipantPageA'
 import ParticipantPageB from './pages/ParticipantPageB'
+import ParticipantWaitingPage from './pages/ParticipantWaitingPage'
 import GameLobbyPage from './pages/GameLobbyPage'
 import GameDashboardPage from './pages/GameDashboardPage'
+import ParticipantDashboardPage from './pages/ParticipantDashboardPage'
 import Home from './pages/Home'
 import Results from './pages/Results'
 import Lobby from './pages/Lobby'
@@ -32,6 +34,8 @@ function App() {
         {/* Participant setup flow */}
         <Route path="/game/:gameId/player/:playerId/setup" element={<ParticipantPageA />} />
         <Route path="/game/:gameId/player/:playerId/preferences" element={<ParticipantPageB />} />
+        <Route path="/game/:gameId/player/:playerId/waiting" element={<ParticipantWaitingPage />} />
+        <Route path="/game/:gameId/player/:playerId/dashboard" element={<ParticipantDashboardPage />} />
 
         {/* Game Master pages (new Figma designs) */}
         <Route path="/game/:gameId/lobby" element={<GameLobbyPage />} />

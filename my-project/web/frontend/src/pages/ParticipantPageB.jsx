@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
@@ -24,19 +25,23 @@ const HOUSEHOLDS = {
  * ParticipantPageB — Step 2 of participant setup.
  *
  * Displays cooperation level toggle and a text area
- * for describing agent behaviour.
+ * for describing agent behaviour. Both must be filled
+ * before the user can continue.
  *
  * Route: /game/:gameId/player/:playerId/preferences
  */
 function ParticipantPageB() {
   const { gameId, playerId } = useParams()
   const household = HOUSEHOLDS[playerId]
+  const [cooperation, setCooperation] = useState(null)
+  const [agentText, setAgentText] = useState('')
 
   if (!household) {
     return <div className="left-panel"><p>Household not found.</p></div>
   }
 
   const titleColorClass = `participant-b__title--${household.color}`
+  const isValid = cooperation !== null && agentText.trim().length > 0
 
   return (
     <PageLayout variant="sidebar">
@@ -49,19 +54,20 @@ function ParticipantPageB() {
 
         <div className="participant-b__section">
           <FormLabel>Level of Cooperation:</FormLabel>
-          <CooperationToggle />
+          <CooperationToggle value={cooperation} onChange={setCooperation} />
         </div>
 
         <div className="participant-b__section">
           <FormLabel>Describe in more detail, to your agent how it should behave:</FormLabel>
-          <AgentTextArea />
+          <AgentTextArea value={agentText} onChange={setAgentText} />
         </div>
       </LeftPanel>
 
       <RightPanel variant="action" color={household.color} compact>
         <ActionButton
           type="forward"
-          to={`/game/${gameId}/player/${playerId}`}
+          to={`/game/${gameId}/player/${playerId}/waiting`}
+          disabled={!isValid}
         />
       </RightPanel>
     </PageLayout>

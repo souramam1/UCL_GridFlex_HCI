@@ -1,0 +1,208 @@
+/* ============================================
+   PARTICIPANT DASHBOARD PAGE
+   Individual participant's simulation view.
+   Three sections stacked vertically:
+     1. Cream header (navbar + title)
+     2. Coloured status band (timeline + info)
+     3. Cream SVG scene area
+   ============================================ */
+
+.participant-dashboard {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-cream);
+}
+
+/* --- Header (cream top section) --- */
+
+.participant-dashboard__header {
+  padding: 2rem 3rem 1.5rem;
+}
+
+.participant-dashboard__title {
+  font-family: var(--font-primary);
+  font-size: 2.2rem;
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+/* --- Status Band (coloured mid section) --- */
+
+.participant-dashboard__status-band {
+  padding: 1.5rem 3rem 1.2rem;
+  color: #fff;
+}
+
+/* Timeline bar container */
+.participant-dashboard__timeline {
+  margin-bottom: 1rem;
+}
+
+.participant-dashboard__timeline-bar {
+  position: relative;
+  height: 18px;
+  background-color: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  overflow: visible;
+}
+
+/* Gold charging section inside the timeline */
+.participant-dashboard__timeline-charge {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background-color: var(--color-gold);
+  border-radius: 2px;
+}
+
+/* Current time marker (triangle + line) */
+.participant-dashboard__timeline-marker {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background-color: #fff;
+  transform: translateX(-50%);
+}
+
+.participant-dashboard__timeline-arrow {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 7px solid #fff;
+}
+
+/* Timeline labels row */
+.participant-dashboard__timeline-labels {
+  position: relative;
+  height: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.participant-dashboard__timeline-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.participant-dashboard__timeline-label--goal {
+  font-weight: var(--font-weight-regular);
+}
+
+/* --- Info Row (bottom of status band) --- */
+
+.participant-dashboard__info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.participant-dashboard__info-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
+  font-weight: var(--font-weight-medium);
+  color: #fff;
+}
+
+.participant-dashboard__info-item--center {
+  justify-content: center;
+}
+
+.participant-dashboard__info-item--right {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+/* Charging status dot */
+.participant-dashboard__status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.participant-dashboard__status-dot--charging {
+  background-color: #A0B44C;
+}
+
+.participant-dashboard__status-dot--idle {
+  background-color: #888;
+}
+
+/* Small progress bar in info row */
+.participant-dashboard__progress-bar {
+  display: inline-block;
+  width: 60px;
+  height: 12px;
+  background-color: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.participant-dashboard__progress-fill {
+  display: block;
+  height: 100%;
+  background-color: var(--color-gold);
+  border-radius: 2px;
+}
+
+/* --- Scene Area (cream bottom section) --- */
+
+.participant-dashboard__scene {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 3rem;
+  min-height: 40vh;
+}
+
+.participant-dashboard__scene-placeholder {
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  color: #bbb;
+}
+
+/* ============================================
+   PARTICIPANT DASHBOARD - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .participant-dashboard__header {
+    padding: 1.5rem 1.5rem 1rem;
+  }
+
+  .participant-dashboard__title {
+    font-size: 1.6rem;
+  }
+
+  .participant-dashboard__status-band {
+    padding: 1rem 1.5rem;
+  }
+
+  .participant-dashboard__info-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .participant-dashboard__scene {
+    padding: 1.5rem;
+    min-height: 30vh;
+  }
+}

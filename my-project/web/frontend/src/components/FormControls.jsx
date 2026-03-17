@@ -143,9 +143,18 @@ function PercentInput({ defaultValue = '' }) {
 
 /**
  * CooperationToggle — Binary toggle: Co-operative / Non co-operative.
+ *
+ * Supports both controlled (value + onChange) and uncontrolled modes.
+ *   Controlled:   <CooperationToggle value={val} onChange={setVal} />
+ *   Uncontrolled:  <CooperationToggle />
  */
-function CooperationToggle({ defaultValue = null }) {
-  const [selected, setSelected] = useState(defaultValue)
+function CooperationToggle({ value, onChange }) {
+  const [internal, setInternal] = useState(null)
+  const selected = value !== undefined ? value : internal
+  const handleChange = v => {
+    if (onChange) onChange(v)
+    else setInternal(v)
+  }
 
   return (
     <div className="form-toggle">
@@ -153,14 +162,14 @@ function CooperationToggle({ defaultValue = null }) {
         <button
           type="button"
           className={`form-toggle__option ${selected === 'cooperative' ? 'form-toggle__option--active' : ''}`}
-          onClick={() => setSelected('cooperative')}
+          onClick={() => handleChange('cooperative')}
         >
           X
         </button>
         <button
           type="button"
           className={`form-toggle__option ${selected === 'non-cooperative' ? 'form-toggle__option--active' : ''}`}
-          onClick={() => setSelected('non-cooperative')}
+          onClick={() => handleChange('non-cooperative')}
         >
           X
         </button>
@@ -175,16 +184,26 @@ function CooperationToggle({ defaultValue = null }) {
 
 /**
  * AgentTextArea — Text area for describing agent behaviour.
+ *
+ * Supports both controlled (value + onChange) and uncontrolled modes.
+ *   Controlled:   <AgentTextArea value={val} onChange={setVal} />
+ *   Uncontrolled:  <AgentTextArea />
  */
-function AgentTextArea({ placeholder = '' }) {
-  const [val, setVal] = useState('')
+function AgentTextArea({ value, onChange, placeholder = '' }) {
+  const [internal, setInternal] = useState('')
+  const current = value !== undefined ? value : internal
+  const handleChange = e => {
+    const v = e.target.value
+    if (onChange) onChange(v)
+    else setInternal(v)
+  }
 
   return (
     <div className="form-textarea">
       <textarea
         className="form-textarea__input"
-        value={val}
-        onChange={e => setVal(e.target.value)}
+        value={current}
+        onChange={handleChange}
         placeholder={placeholder}
       />
     </div>
