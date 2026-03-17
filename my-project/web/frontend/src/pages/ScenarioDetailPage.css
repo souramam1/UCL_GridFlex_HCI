@@ -1,0 +1,67 @@
+/* ============================================
+   SCENARIO DETAIL PAGE
+   ============================================ */
+
+.scenario-detail__title {
+  font-family: var(--font-primary);
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.1;
+  margin-top: 1.5rem;
+}
+
+.scenario-detail__params {
+  font-family: var(--font-primary);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  line-height: 1.8;
+  margin-top: 1.5rem;
+}
+
+.scenario-detail__param-label {
+  font-style: italic;
+}
+
+.scenario-detail__rules-heading {
+  font-family: var(--font-primary);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-regular);
+  font-style: italic;
+  color: var(--color-text);
+  margin-top: 1.5rem;
+}
+
+.scenario-detail__rules {
+  font-family: var(--font-primary);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  line-height: 1.8;
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.scenario-detail__participants {
+  margin-top: 2rem;
+}
+
+.scenario-detail__participants-label {
+  font-family: var(--font-primary);
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.scenario-detail__participants-input {
+  display: block;
+  margin-top: 0.75rem;
+  width: 180px;
+  padding: 0.5rem;
+  font-family: var(--font-primary);
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f5f0e0;
+}

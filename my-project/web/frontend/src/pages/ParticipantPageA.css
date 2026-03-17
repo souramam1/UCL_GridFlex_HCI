@@ -1,0 +1,57 @@
+/* ============================================
+   PARTICIPANT PAGE A
+   Household attributes + EV settings layout.
+   Two-column form: left = cluster info, right = EV controls.
+   ============================================ */
+
+.participant-a__title {
+  font-family: var(--font-primary);
+  font-size: 2.2rem;
+  font-weight: var(--font-weight-medium);
+  margin-bottom: 2rem;
+}
+
+/* Use the household colour for the title text */
+.participant-a__title--blue    { color: var(--color-blue); }
+.participant-a__title--magenta { color: var(--color-magenta); }
+.participant-a__title--green   { color: var(--color-green); }
+.participant-a__title--gold    { color: var(--color-gold); }
+
+/* --- Two-column form grid --- */
+
+.participant-a__form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem 3rem;
+}
+
+/* --- Left column sections --- */
+
+.participant-a__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* --- Right column sections --- */
+
+.participant-a__control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ============================================
+   PARTICIPANT PAGE A - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .participant-a__title {
+    font-size: 1.6rem;
+  }
+
+  .participant-a__form {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}

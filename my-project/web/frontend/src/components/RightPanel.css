@@ -1,0 +1,129 @@
+/* ============================================
+   RIGHT PANEL
+   The right column of the two-column layout.
+   Two variants:
+     "split"  — Simulate (top) + Data Log (bottom)
+     "action" — Single colour block with children
+   ============================================ */
+
+/* --- Base --- */
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Fixed mode (narrower, expands on hover) --- */
+
+.right-panel--fixed {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 33vw;
+  height: 100vh;
+  z-index: 10;
+  transition: width 0.35s ease;
+}
+
+.right-panel--fixed:hover {
+  width: 50vw;
+}
+
+/* --- Compact fixed mode (thinner, for simulation flow) --- */
+
+.right-panel--compact {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 22vw;
+  height: 100vh;
+  z-index: 10;
+  transition: width 0.35s ease;
+}
+
+.right-panel--compact:hover {
+  width: 33vw;
+}
+
+/* --- Split Variant (Homepage, About, Models) --- */
+
+.right-panel__simulate {
+  background-color: var(--color-blue);
+  flex: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.right-panel__simulate:hover {
+  background-color: var(--color-blue-hover);
+}
+
+.right-panel__simulate-text {
+  font-family: var(--font-primary);
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.right-panel__datalog {
+  background-color: var(--color-gray);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.right-panel__datalog:hover {
+  background-color: var(--color-gray-hover);
+}
+
+.right-panel__datalog-text {
+  font-family: var(--font-primary);
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+/* --- Action Variant (Simulation flow, Participant pages) --- */
+
+.right-panel__action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 3rem;
+}
+
+/* ============================================
+   RIGHT PANEL - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .right-panel {
+    min-height: 50vh;
+  }
+
+  .right-panel--fixed,
+  .right-panel--compact {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 50vh;
+  }
+
+  .right-panel--fixed:hover,
+  .right-panel--compact:hover {
+    width: 100%;
+  }
+
+  .right-panel__simulate-text,
+  .right-panel__datalog-text {
+    font-size: 1.8rem;
+  }
+}

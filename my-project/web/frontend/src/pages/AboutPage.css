@@ -1,0 +1,12 @@
+/* ============================================
+   ABOUT PAGE
+   ============================================ */
+
+.about__description {
+  font-family: var(--font-primary);
+  font-size: 1.1rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin-top: 1.5rem;
+}

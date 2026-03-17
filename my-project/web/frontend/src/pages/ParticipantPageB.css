@@ -1,0 +1,42 @@
+/* ============================================
+   PARTICIPANT PAGE B
+   Cooperation level + agent behaviour description.
+   Single-column form layout.
+   ============================================ */
+
+.participant-b__title {
+  font-family: var(--font-primary);
+  font-size: 2.2rem;
+  font-weight: var(--font-weight-medium);
+  margin-bottom: 2.5rem;
+}
+
+/* Use the household colour for the title text */
+.participant-b__title--blue    { color: var(--color-blue); }
+.participant-b__title--magenta { color: var(--color-magenta); }
+.participant-b__title--green   { color: var(--color-green); }
+.participant-b__title--gold    { color: var(--color-gold); }
+
+/* --- Form sections --- */
+
+.participant-b__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  max-width: 400px;
+}
+
+/* ============================================
+   PARTICIPANT PAGE B - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .participant-b__title {
+    font-size: 1.6rem;
+  }
+
+  .participant-b__section {
+    max-width: 100%;
+  }
+}

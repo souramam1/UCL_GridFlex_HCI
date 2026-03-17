@@ -1,0 +1,24 @@
+/* ============================================
+   PAGE TITLE
+   Large heading used on most pages.
+   Follows the "Title --" pattern.
+   ============================================ */
+
+.page-title {
+  font-family: var(--font-primary);
+  font-size: 3.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.1;
+  margin-top: 1.5rem;
+}
+
+/* ============================================
+   PAGE TITLE - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 2.5rem;
+  }
+}

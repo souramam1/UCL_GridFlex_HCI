@@ -1,0 +1,49 @@
+/* ============================================
+   ACTION BUTTON
+   Circle button with icon used in the right
+   panel. Types: "forward" (→) and "stop" (□).
+   ============================================ */
+
+.action-button {
+  width: var(--action-button-size);
+  height: var(--action-button-size);
+  border-radius: 50%;
+  border: 2px solid var(--color-text);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  padding: 0;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.action-button:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  transform: scale(1.05);
+}
+
+.action-button__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-button__label {
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.action-button__wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

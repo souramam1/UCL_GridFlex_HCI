@@ -1,0 +1,30 @@
+/* ============================================
+   SCENARIO CARD
+   Selectable card used in the 2x2 scenario grid.
+   ============================================ */
+
+.scenario-card {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #b8b8b8;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.scenario-card:hover {
+  background-color: #999999;
+  transform: scale(1.03);
+}
+
+.scenario-card--selected {
+  background-color: #888888;
+}
+
+.scenario-card__label {
+  font-family: var(--font-primary);
+  font-size: 1.1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}

@@ -1,0 +1,48 @@
+/* ============================================
+   NAV BAR
+   Horizontal navigation with "About" and
+   "Simulation Models" links. Optional back arrow.
+   ============================================ */
+
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: var(--nav-gap);
+  margin-bottom: 2rem;
+}
+
+.navbar--centered {
+  justify-content: center;
+}
+
+.navbar--with-back {
+  justify-content: flex-start;
+}
+
+.navbar__back {
+  font-family: var(--font-primary);
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s ease;
+}
+
+.navbar__back:hover {
+  opacity: 0.6;
+}
+
+.navbar__link {
+  font-family: var(--font-primary);
+  font-size: 1rem;
+  font-weight: var(--font-weight-light);
+  color: var(--color-text);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+
+.navbar__link:hover {
+  text-decoration: underline;
+}

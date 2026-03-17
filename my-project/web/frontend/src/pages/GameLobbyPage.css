@@ -1,0 +1,85 @@
+/* ============================================
+   GAME LOBBY PAGE
+   Game Master's lobby: join links, participant
+   status bars, and "Run Simulation" action.
+   ============================================ */
+
+.game-lobby__title {
+  font-family: var(--font-primary);
+  font-size: 2.2rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: 2rem;
+}
+
+/* --- Join Links --- */
+
+.game-lobby__links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 2rem;
+}
+
+.game-lobby__link-row {
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
+  color: var(--color-text);
+}
+
+.game-lobby__link-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.game-lobby__link-url {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-blue);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.game-lobby__link-url:hover {
+  text-decoration: underline;
+}
+
+/* --- Participants Joined --- */
+
+.game-lobby__participants-heading {
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: 0.75rem;
+}
+
+.game-lobby__status-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 180px;
+}
+
+.game-lobby__status-bar {
+  height: 1.2rem;
+  border-radius: 2px;
+  transition: opacity 0.3s ease;
+}
+
+.game-lobby__status-bar--blue    { background-color: var(--color-blue); }
+.game-lobby__status-bar--magenta { background-color: var(--color-magenta); }
+.game-lobby__status-bar--green   { background-color: var(--color-green); }
+.game-lobby__status-bar--gold    { background-color: var(--color-gold); }
+
+.game-lobby__status-bar--inactive {
+  opacity: 0.3;
+}
+
+/* ============================================
+   GAME LOBBY PAGE - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .game-lobby__title {
+    font-size: 1.6rem;
+  }
+}

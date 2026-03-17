@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   DESIGN TOKENS
+   Single source of truth for colours, fonts,
+   and spacing used across all pages.
+   ============================================ */
+
+:root {
+  /* --- Colours --- */
+  --color-cream:          #FDF6E3;
+  --color-blue:           #7B9BD6;
+  --color-blue-hover:     #6A8CCB;
+  --color-gray:           #666666;
+  --color-gray-hover:     #5a5a5a;
+  --color-magenta:        #C07BAE;
+  --color-green:          #A0B44C;
+  --color-gold:           #C4A04A;
+  --color-copper:         #C4835A;
+  --color-text:           #1a1a1a;
+  --color-text-muted:     #333333;
+
+  /* --- Typography --- */
+  --font-primary:         'Chakra Petch', sans-serif;
+  --font-weight-light:    300;
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-bold:     700;
+
+  /* --- Spacing --- */
+  --panel-padding:        2.5rem 3rem 3rem;
+  --nav-gap:              2.5rem;
+
+  /* --- Sizing --- */
+  --action-button-size:   4rem;
+}

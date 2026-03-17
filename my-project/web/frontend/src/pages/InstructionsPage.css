@@ -1,0 +1,26 @@
+/* ============================================
+   INSTRUCTIONS PAGE
+   ============================================ */
+
+.instructions__intro {
+  font-family: var(--font-primary);
+  font-size: 1.05rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin-top: 2rem;
+}
+
+.instructions__steps {
+  font-family: var(--font-primary);
+  font-size: 1rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  line-height: 1.8;
+  margin-top: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.instructions__steps li {
+  margin-bottom: 0.25rem;
+}

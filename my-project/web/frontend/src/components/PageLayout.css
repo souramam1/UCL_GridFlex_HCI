@@ -1,0 +1,67 @@
+/* ============================================
+   PAGE LAYOUT
+   Two-column grid used on every page.
+   Left panel: cream background with content.
+   Right panel: provided by RightPanel component.
+   ============================================ */
+
+.page-layout {
+  width: 100%;
+}
+
+/* --- Default: equal 50/50 columns (Homepage) --- */
+
+.page-layout__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
+
+/* --- Sidebar variant: narrower right, scrollable left --- */
+
+.page-layout__grid--sidebar {
+  display: block;
+}
+
+/* ============================================
+   LEFT PANEL
+   ============================================ */
+
+.left-panel {
+  background-color: var(--color-cream);
+  padding: var(--panel-padding);
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel--scrollable {
+  min-height: 100vh;
+  overflow-y: auto;
+  margin-right: 33vw;
+}
+
+.left-panel--scrollable-compact {
+  min-height: 100vh;
+  overflow-y: auto;
+  margin-right: 22vw;
+}
+
+/* ============================================
+   PAGE LAYOUT - Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .page-layout__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .left-panel {
+    padding: 2rem 1.5rem;
+    min-height: 50vh;
+  }
+
+  .left-panel--scrollable,
+  .left-panel--scrollable-compact {
+    margin-right: 0;
+  }
+}
