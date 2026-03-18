@@ -1,0 +1,62 @@
+/* ============================================
+   HOUSE SCENE
+   Animated SVG illustration for participant
+   dashboards. Controls window glow, wire
+   fill pulsing, and car visibility via CSS.
+   
+   Wire colours (from SVG):
+     Substation wire: #ffe193 (warm yellow)
+     Car/neighbour wire: #ca1919 (red)
+   Window lit colour: #fff0b1 (warm yellow)
+   ============================================ */
+
+.house-scene {
+  max-width: 50%;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --- Window panes --- */
+
+.house-scene__window--lit {
+  transition: fill 0.6s ease;
+}
+
+/* --- Wire base style (default fill is black) --- */
+
+.house-scene__wire {
+  fill: #7c7a7a;
+}
+
+/* --- Wire: yellow fill pulse (substation — always active) --- */
+/* Pulses between black and #ffe193 (warm yellow from SVG) */
+
+.house-scene__wire--yellow-pulse {
+  animation: hs-yellow-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes hs-yellow-pulse {
+  0%, 100% {
+    fill: #e6cb86;
+  }
+  50% {
+    fill: #ffe193;
+  }
+}
+
+/* --- Wire: red fill pulse (charging / grid overload) --- */
+/* Pulses between black and #ca1919 (red from SVG) */
+
+.house-scene__wire--red-pulse {
+  animation: hs-red-pulse 0.2s ease-in-out infinite;
+}
+
+@keyframes hs-red-pulse {
+  0%, 100% {
+    fill: #a01414;
+  }
+  50% {
+    fill: #ca1919;
+  }
+}

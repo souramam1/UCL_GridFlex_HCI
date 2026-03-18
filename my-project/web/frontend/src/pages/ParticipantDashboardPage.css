@@ -206,3 +206,41 @@
     min-height: 30vh;
   }
 }
+
+/* --- Debug Toggle Panel (remove when backend connected) --- */
+
+.participant-dashboard__debug {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  z-index: 50;
+}
+
+.participant-dashboard__debug-title {
+  font-weight: var(--font-weight-bold);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+  margin-bottom: 0.2rem;
+}
+
+.participant-dashboard__debug-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.participant-dashboard__debug-toggle input {
+  cursor: pointer;
+}

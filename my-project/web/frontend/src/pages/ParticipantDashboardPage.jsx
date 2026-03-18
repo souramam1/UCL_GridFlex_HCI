@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
+import HouseScene from '../components/HouseScene'
 import './ParticipantDashboardPage.css'
 
 /**
@@ -21,7 +23,7 @@ const HOUSEHOLDS = {
  *   - Top cream area: disabled NavBar + household title
  *   - Coloured status band: timeline bar, charging status, goal,
  *     progress, agent type
- *   - Bottom cream area: placeholder for animated SVG house scene
+ *   - Bottom cream area: animated HouseScene SVG
  *
  * Route: /game/:gameId/player/:playerId/dashboard
  */
@@ -42,6 +44,11 @@ function ParticipantDashboardPage() {
     chargeStart: 30,  // where the gold charging section starts
     chargeEnd: 55,    // where the gold charging section ends
   }
+
+  // --- Debug toggles (for testing without backend) ---
+  const [dbgCarPresent, setDbgCarPresent] = useState(true)
+  const [dbgCharging, setDbgCharging] = useState(true)
+  const [dbgGridOverloaded, setDbgGridOverloaded] = useState(false)
 
   return (
     <div className="participant-dashboard">
@@ -124,12 +131,42 @@ function ParticipantDashboardPage() {
         </div>
       </div>
 
-      {/* --- Bottom cream section (SVG scene placeholder) --- */}
+      {/* --- Bottom cream section (animated SVG scene) --- */}
       <div className="participant-dashboard__scene">
-        {/* Animated HouseScene SVG component will go here */}
-        <span className="participant-dashboard__scene-placeholder">
-          Animated SVG scene — {hh.name}
-        </span>
+        <HouseScene
+          carPresent={dbgCarPresent}
+          charging={dbgCharging}
+          gridOverloaded={dbgGridOverloaded}
+        />
+      </div>
+
+      {/* --- Debug toggle panel (dev only — remove when backend connected) --- */}
+      <div className="participant-dashboard__debug">
+        <span className="participant-dashboard__debug-title">Debug</span>
+        <label className="participant-dashboard__debug-toggle">
+          <input
+            type="checkbox"
+            checked={dbgCarPresent}
+            onChange={e => setDbgCarPresent(e.target.checked)}
+          />
+          Car Present
+        </label>
+        <label className="participant-dashboard__debug-toggle">
+          <input
+            type="checkbox"
+            checked={dbgCharging}
+            onChange={e => setDbgCharging(e.target.checked)}
+          />
+          Charging
+        </label>
+        <label className="participant-dashboard__debug-toggle">
+          <input
+            type="checkbox"
+            checked={dbgGridOverloaded}
+            onChange={e => setDbgGridOverloaded(e.target.checked)}
+          />
+          Grid Overloaded
+        </label>
       </div>
     </div>
   )
