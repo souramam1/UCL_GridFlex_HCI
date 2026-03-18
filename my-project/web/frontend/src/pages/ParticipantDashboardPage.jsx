@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import HouseScene from '../components/HouseScene'
 import './ParticipantDashboardPage.css'
@@ -29,7 +29,45 @@ const HOUSEHOLDS = {
  */
 function ParticipantDashboardPage() {
   const { gameId, playerId } = useParams()
+  const navigate = useNavigate()
   const hh = HOUSEHOLDS[playerId] || HOUSEHOLDS[1]
+  const [shutdownCountdown, setShutdownCountdown] = useState(null)
+
+  // Poll for game stopped flag — show 5s countdown then navigate away
+  // (Will be replaced by WebSocket event in production)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stopped = localStorage.getItem(`gridflex_stopped_${gameId}`)
+      if (stopped === 'true' && shutdownCountdown === null) {
+        setShutdownCountdown(5)
+      }
+    }, 1000)
+
+    const handleStorage = (e) => {
+      if (e.key === `gridflex_stopped_${gameId}` && e.newValue === 'true') {
+        setShutdownCountdown(5)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [gameId, shutdownCountdown])
+
+  // Countdown timer — ticks down from 5 to 0, then navigates to home
+  useEffect(() => {
+    if (shutdownCountdown === null) return
+    if (shutdownCountdown <= 0) {
+      navigate('/')
+      return
+    }
+    const timer = setTimeout(() => {
+      setShutdownCountdown(shutdownCountdown - 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [shutdownCountdown, navigate])
 
   // Placeholder simulation data — will come from backend via WebSocket
   const sim = {
@@ -139,6 +177,15 @@ function ParticipantDashboardPage() {
           gridOverloaded={dbgGridOverloaded}
         />
       </div>
+
+      {/* --- Shutdown countdown overlay --- */}
+      {shutdownCountdown !== null && (
+        <div className="participant-dashboard__shutdown-overlay">
+          <p className="participant-dashboard__shutdown-text">
+            Simulation ended. This page will close in {shutdownCountdown}s...
+          </p>
+        </div>
+      )}
 
       {/* --- Debug toggle panel (dev only — remove when backend connected) --- */}
       <div className="participant-dashboard__debug">

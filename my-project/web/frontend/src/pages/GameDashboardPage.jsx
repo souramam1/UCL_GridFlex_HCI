@@ -139,7 +139,9 @@ function GameDashboardPage() {
 
           {/* Stop and Step action buttons */}
           <div className="dashboard__actions">
-            <ActionButton type="stop" label="Stop" />
+            <ActionButton type="stop" label="Stop" onClick={() => {
+              localStorage.setItem(`gridflex_stopped_${gameId}`, 'true')
+            }} />
             <ActionButton type="forward" label="Step" />
           </div>
         </RightPanel>

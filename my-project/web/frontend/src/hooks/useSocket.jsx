@@ -27,6 +27,7 @@ export function useSocket(gameId, playerId) {
     })
 
     newSocket.on('disconnect', () => {
+      
       console.log('Disconnected from server')
     })
 

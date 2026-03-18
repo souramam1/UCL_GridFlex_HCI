@@ -25,7 +25,7 @@ function HomePage() {
             <span className="home__simulate-text">Simulate</span>
           </Link>
 
-          <Link to="/results" className="home__datalog">
+          <Link to="/datalog" className="home__datalog">
             <span className="home__datalog-text">Data Log</span>
           </Link>
         </div>

@@ -25,6 +25,7 @@ const COLOR_MAP = {
   magenta: 'var(--color-magenta)',
   green:   'var(--color-green)',
   gold:    'var(--color-gold)',
+  gray:    'var(--color-gray)',
 }
 
 function RightPanel({ variant = 'split', color = 'blue', fixed = false, compact = false, children }) {
@@ -41,7 +42,7 @@ function RightPanel({ variant = 'split', color = 'blue', fixed = false, compact 
         <Link to="/simulate" className="right-panel__simulate">
           <span className="right-panel__simulate-text">Simulate</span>
         </Link>
-        <Link to="/results" className="right-panel__datalog">
+        <Link to="/datalog" className="right-panel__datalog">
           <span className="right-panel__datalog-text">Data Log</span>
         </Link>
       </div>

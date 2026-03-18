@@ -1,0 +1,93 @@
+/* ============================================
+   DATA LOG DETAIL PAGE
+   Summary view for a single test run.
+   ============================================ */
+
+.datalog-detail__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+.datalog-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.datalog-detail__heading {
+  font-family: var(--font-primary);
+  font-size: 1rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.datalog-detail__placeholder {
+  background-color: #e8e8e8;
+  border: none;
+  border-radius: 0;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
+  color: #999;
+  min-height: 120px;
+}
+
+.datalog-detail__placeholder--wide {
+  min-height: 160px;
+}
+
+.datalog-detail__placeholder--tall {
+  min-height: 240px;
+}
+
+/* --- Download Button (in sidebar) --- */
+
+.datalog-detail__download-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.datalog-detail__download-btn {
+  width: var(--action-button-size);
+  height: var(--action-button-size);
+  border-radius: 50%;
+  border: 2px solid var(--color-text);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  padding: 0;
+  color: var(--color-text);
+}
+
+.datalog-detail__download-btn:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  transform: scale(1.05);
+}
+
+.datalog-detail__download-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.datalog-detail__download-label {
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text);
+  margin-top: 0.5rem;
+  text-align: center;
+}

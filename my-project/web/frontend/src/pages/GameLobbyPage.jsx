@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
@@ -25,6 +25,7 @@ const PARTICIPANT_COLORS = ['blue', 'magenta', 'green', 'gold']
  */
 function GameLobbyPage() {
   const { gameId } = useParams()
+  const navigate = useNavigate()
   const participantCount = 4
 
   const getJoined = useCallback(() => {
@@ -32,7 +33,21 @@ function GameLobbyPage() {
     return JSON.parse(localStorage.getItem(key) || '[]')
   }, [gameId])
 
-  const [joinedIds, setJoinedIds] = useState(getJoined)
+  const [joinedIds, setJoinedIds] = useState([])
+
+  // Reset join state and game flags when lobby loads (fresh start each time)
+  useEffect(() => {
+    localStorage.setItem(`gridflex_joined_${gameId}`, '[]')
+    localStorage.removeItem(`gridflex_started_${gameId}`)
+    localStorage.removeItem(`gridflex_stopped_${gameId}`)
+    setJoinedIds([])
+  }, [gameId])
+
+  // Handle Run Simulation click — set started flag then navigate
+  const handleStart = () => {
+    localStorage.setItem(`gridflex_started_${gameId}`, 'true')
+    navigate(`/game/${gameId}/dashboard`)
+  }
 
   // Listen for localStorage changes from other tabs
   useEffect(() => {
@@ -99,7 +114,7 @@ function GameLobbyPage() {
       <RightPanel variant="action" color="blue" compact>
         <ActionButton
           type="forward"
-          to={`/game/${gameId}/dashboard`}
+          onClick={handleStart}
           label="Run Simulation"
           disabled={!allJoined}
         />

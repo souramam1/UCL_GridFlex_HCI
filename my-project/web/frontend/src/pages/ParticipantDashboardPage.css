@@ -207,6 +207,29 @@
   }
 }
 
+/* --- Shutdown Countdown Overlay --- */
+
+.participant-dashboard__shutdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.participant-dashboard__shutdown-text {
+  font-family: var(--font-primary);
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-medium);
+  color: #fff;
+  text-align: center;
+}
+
 /* --- Debug Toggle Panel (remove when backend connected) --- */
 
 .participant-dashboard__debug {

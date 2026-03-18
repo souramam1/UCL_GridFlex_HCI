@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
@@ -23,6 +23,7 @@ const HOUSEHOLDS = {
  */
 function ParticipantWaitingPage() {
   const { gameId, playerId } = useParams()
+  const navigate = useNavigate()
   const household = HOUSEHOLDS[playerId]
 
   // Register this participant as joined in localStorage
@@ -36,6 +37,29 @@ function ParticipantWaitingPage() {
       localStorage.setItem(key, JSON.stringify(current))
     }
   }, [gameId, playerId])
+
+  // Poll for game started flag — navigate to dashboard when set
+  // (Will be replaced by WebSocket event in production)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const started = localStorage.getItem(`gridflex_started_${gameId}`)
+      if (started === 'true') {
+        navigate(`/game/${gameId}/player/${playerId}/dashboard`)
+      }
+    }, 1000)
+
+    const handleStorage = (e) => {
+      if (e.key === `gridflex_started_${gameId}` && e.newValue === 'true') {
+        navigate(`/game/${gameId}/player/${playerId}/dashboard`)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [gameId, playerId, navigate])
 
   if (!household) {
     return <div className="left-panel"><p>Household not found.</p></div>

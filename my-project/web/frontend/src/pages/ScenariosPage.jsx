@@ -8,10 +8,10 @@ import ScenarioCard from '../components/ScenarioCard'
 import './ScenariosPage.css'
 
 const SCENARIOS = [
-  { id: 1, label: 'Scenario I' },
-  { id: 2, label: 'Scenario II' },
-  { id: 3, label: 'Scenario III' },
-  { id: 4, label: 'Scenario IV' },
+  { id: 1, label: 'Scenario I',   disabled: false },
+  { id: 2, label: 'Scenario II',  disabled: true },
+  { id: 3, label: 'Scenario III', disabled: true },
+  { id: 4, label: 'Scenario IV',  disabled: true },
 ]
 
 function ScenariosPage() {
@@ -29,6 +29,7 @@ function ScenariosPage() {
               label={s.label}
               selected={selected === s.id}
               onClick={() => setSelected(s.id)}
+              disabled={s.disabled}
             />
           ))}
         </div>

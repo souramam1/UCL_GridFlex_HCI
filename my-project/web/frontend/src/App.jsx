@@ -10,6 +10,9 @@ import ParticipantPageB from './pages/ParticipantPageB'
 import ParticipantWaitingPage from './pages/ParticipantWaitingPage'
 import GameLobbyPage from './pages/GameLobbyPage'
 import GameDashboardPage from './pages/GameDashboardPage'
+import DataLogPage from './pages/DataLogPage'
+import DataLogDetailPage from './pages/DataLogDetailPage'
+import DataLogComparePage from './pages/DataLogComparePage'
 import ParticipantDashboardPage from './pages/ParticipantDashboardPage'
 import Home from './pages/Home'
 import Results from './pages/Results'
@@ -25,6 +28,11 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/models" element={<ModelsPage />} />
+
+        {/* Data log */}
+        <Route path="/datalog" element={<DataLogPage />} />
+        <Route path="/datalog/compare/:runIdA/:runIdB" element={<DataLogComparePage />} />
+        <Route path="/datalog/:runId" element={<DataLogDetailPage />} />
 
         {/* Simulation setup flow */}
         <Route path="/simulate" element={<InstructionsPage />} />
