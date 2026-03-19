@@ -112,6 +112,7 @@ function GameLobbyPage() {
       </LeftPanel>
 
       <RightPanel variant="action" color="blue" compact>
+        <ActionButton type="exit" to="/" label="Exit Simulation" />
         <ActionButton
           type="forward"
           onClick={handleStart}

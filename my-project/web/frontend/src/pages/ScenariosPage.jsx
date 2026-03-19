@@ -35,6 +35,7 @@ function ScenariosPage() {
         </div>
       </LeftPanel>
       <RightPanel variant="action" color="blue" compact>
+        <ActionButton type="exit" to="/" label="Exit Simulation" />
         <ActionButton
           type="forward"
           to={selected ? `/simulate/scenario/${selected}` : '/simulate/scenarios'}

@@ -23,6 +23,7 @@ function InstructionsPage() {
         </ol>
       </LeftPanel>
       <RightPanel variant="action" color="blue" compact>
+        <ActionButton type="exit" to="/" label="Exit Simulation" />
         <ActionButton type="forward" to="/simulate/scenarios" />
       </RightPanel>
     </PageLayout>

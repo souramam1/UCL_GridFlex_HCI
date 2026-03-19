@@ -1,0 +1,14 @@
+{
+  "simulation_start": "2026-01-15T21:00:00",
+  "simulation_end": "2026-01-15T23:30:00",
+  "wall_clock_start": "2026-03-17T16:23:38",
+  "wall_clock_end": "2026-03-17T16:25:11",
+  "total_steps": 10,
+  "agent_count": 3,
+  "agent_names": [
+    "House 1",
+    "House 2",
+    "House 3"
+  ],
+  "negotiation_enabled": true
+}
