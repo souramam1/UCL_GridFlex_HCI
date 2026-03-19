@@ -1,4 +1,5 @@
-import { useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
@@ -14,8 +15,7 @@ import {
 import './ParticipantPageA.css'
 
 /**
- * Static household data — will eventually come from the backend.
- * Maps playerId (1-4) to household metadata and colour.
+ * Static household data — maps player number (1-4) to metadata.
  */
 const HOUSEHOLDS = {
   1: { name: 'Household A', letter: 'A', color: 'blue',    type: 'Detached', epc: 'C' },
@@ -24,9 +24,6 @@ const HOUSEHOLDS = {
   4: { name: 'Household D', letter: 'D', color: 'gold',    type: 'Detached', epc: 'C' },
 }
 
-/**
- * Format hour integer to HH:00 string.
- */
 function formatHour(h) {
   return `${String(h).padStart(2, '0')}:00`
 }
@@ -34,17 +31,48 @@ function formatHour(h) {
 /**
  * ParticipantPageA — Step 1 of participant setup.
  *
- * Displays household cluster attributes on the left
- * and EV battery / time-of-use controls on the right.
+ * Fetches player info from the backend to determine player number,
+ * then maps that to a household. Collects EV settings and stores
+ * them in sessionStorage for ParticipantPageB.
  *
  * Route: /game/:gameId/player/:playerId/setup
  */
 function ParticipantPageA() {
   const { gameId, playerId } = useParams()
-  const household = HOUSEHOLDS[playerId]
+  const navigate = useNavigate()
 
+  const [playerNumber, setPlayerNumber] = useState(null)
+  const [batterySize, setBatterySize] = useState(5)
+  const [carAwayFrom, setCarAwayFrom] = useState(8)
+  const [carAwayUntil, setCarAwayUntil] = useState(17)
+  const [targetSoc, setTargetSoc] = useState('')
+
+  // Fetch player info to get the player number
+  useEffect(() => {
+    fetch(`/api/games/${gameId}/player/${playerId}`)
+      .then(r => r.json())
+      .then(data => setPlayerNumber(data.number))
+      .catch(err => console.error('Failed to fetch player:', err))
+  }, [gameId, playerId])
+
+  if (!playerNumber) {
+    return <div className="left-panel"><p>Loading...</p></div>
+  }
+
+  const household = HOUSEHOLDS[playerNumber]
   if (!household) {
     return <div className="left-panel"><p>Household not found.</p></div>
+  }
+
+  const handleForward = () => {
+    sessionStorage.setItem(`gridflex_inputs_${gameId}_${playerId}`, JSON.stringify({
+      ev_battery_kwh: batterySize,
+      car_away_from: formatHour(carAwayFrom),
+      car_away_until: formatHour(carAwayUntil),
+      target_soc_pct: Number(targetSoc) || 60,
+      initial_soc_pct: 20.0,
+    }))
+    navigate(`/game/${gameId}/player/${playerId}/preferences`)
   }
 
   const titleColorClass = `participant-a__title--${household.color}`
@@ -59,7 +87,6 @@ function ParticipantPageA() {
         </h1>
 
         <div className="participant-a__form">
-          {/* Left column — Cluster attributes */}
           <div>
             <div className="participant-a__section">
               <FormLabel>Your cluster attributes:</FormLabel>
@@ -73,28 +100,29 @@ function ParticipantPageA() {
             </div>
           </div>
 
-          {/* Right column — EV controls */}
           <div>
             <div className="participant-a__control">
               <FormLabel>EV Battery Size:</FormLabel>
-              <RangeSlider min={0} max={7} step={0.5} defaultValue={5} unit="kW" />
+              <RangeSlider
+                min={0} max={7} step={0.5}
+                value={batterySize} onChange={setBatterySize}
+                unit="kW"
+              />
             </div>
 
             <div className="participant-a__control" style={{ marginTop: '1.5rem' }}>
               <FormLabel>Time of Use:</FormLabel>
               <DualRangeSlider
-                min={0}
-                max={24}
-                step={1}
-                defaultLow={8}
-                defaultHigh={17}
+                min={0} max={24} step={1}
+                valueLow={carAwayFrom} valueHigh={carAwayUntil}
+                onChangeLow={setCarAwayFrom} onChangeHigh={setCarAwayUntil}
                 formatLabel={formatHour}
               />
             </div>
 
             <div className="participant-a__control" style={{ marginTop: '1.5rem' }}>
               <FormLabel>Target State of Charge:</FormLabel>
-              <PercentInput />
+              <PercentInput value={targetSoc} onChange={setTargetSoc} />
             </div>
           </div>
         </div>
@@ -103,7 +131,7 @@ function ParticipantPageA() {
       <RightPanel variant="action" color={household.color} compact>
         <ActionButton
           type="forward"
-          to={`/game/${gameId}/player/${playerId}/preferences`}
+          onClick={handleForward}
         />
       </RightPanel>
     </PageLayout>

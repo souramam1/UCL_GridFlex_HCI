@@ -12,9 +12,8 @@ function InstructionsPage() {
         <NavBar backTo="/" />
         <PageTitle>Instructions --</PageTitle>
         <p className="instructions__intro">
-          Use this tool to participate as one or several
-          households enabled with Agentic HEMS under a
-          secondary substation.
+          Using the GridFlex Simulation tool allows you to observe both grid-side and household effects of LLM powered AIs joining the grid. <br />
+          This is a tool for speculation. You configure the inputs, and can discuss the simulated outputs.
         </p>
         <ol className="instructions__steps">
           <li>Choose specific context to simulate</li>

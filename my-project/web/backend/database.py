@@ -24,6 +24,9 @@ async def init_db():
                 id TEXT PRIMARY KEY,
                 num_players INTEGER NOT NULL,
                 status TEXT NOT NULL DEFAULT 'waiting',
+                scenario_id INTEGER,
+                scenario_name TEXT,
+                run_id TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 

@@ -3,14 +3,17 @@ Main backend server — FastAPI for REST endpoints, Socket.IO for live updates.
 
 The simulation is treated as a separate system. This server communicates with it
 only through the filesystem via file_manager.py:
-  - Writes player inputs to simulation/simulation_inputs/
-  - Reads simulation results from simulation/simulation_outputs/
+  - Writes player inputs to simulation/input/
+  - Reads simulation results from simulation/output/runs/
 
 Run with: uvicorn main:app --reload --host 0.0.0.0 --port 8000
 """
 
 import uuid
+import sys
 import asyncio
+import subprocess
+from datetime import datetime
 from contextlib import asynccontextmanager
 
 import socketio
@@ -20,12 +23,18 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from database import get_db, init_db
+from config import MOCK_SIMULATOR_PATH, PROJECT_ROOT
 import file_manager
 
 
 # ── Socket.IO server ──
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+
+
+# ── In-memory state for active simulations ──
+
+active_simulations: dict[str, dict] = {}
 
 
 # ── FastAPI app ──
@@ -51,6 +60,8 @@ api.add_middleware(
 
 class CreateGameRequest(BaseModel):
     num_players: int
+    scenario_id: int = 1
+    scenario_name: str = "Scenario I"
 
 
 class PlayerInput(BaseModel):
@@ -64,8 +75,8 @@ class PlayerInput(BaseModel):
 @api.post("/api/games")
 async def create_game(req: CreateGameRequest):
     """Create a new game session with n player slots."""
-    if not 2 <= req.num_players <= 4:
-        raise HTTPException(400, "Number of players must be between 2 and 4")
+    if not 1 <= req.num_players <= 4:
+        raise HTTPException(400, "Number of players must be between 1 and 4")
 
     game_id = uuid.uuid4().hex[:8]
     players = []
@@ -73,8 +84,8 @@ async def create_game(req: CreateGameRequest):
     db = await get_db()
     try:
         await db.execute(
-            "INSERT INTO games (id, num_players) VALUES (?, ?)",
-            (game_id, req.num_players),
+            "INSERT INTO games (id, num_players, scenario_id, scenario_name) VALUES (?, ?, ?, ?)",
+            (game_id, req.num_players, req.scenario_id, req.scenario_name),
         )
 
         for i in range(req.num_players):
@@ -114,6 +125,9 @@ async def get_game(game_id: str):
         "id": game["id"],
         "status": game["status"],
         "num_players": game["num_players"],
+        "scenario_id": game["scenario_id"],
+        "scenario_name": game["scenario_name"],
+        "run_id": game["run_id"],
         "created_at": game["created_at"],
         "players": [
             {
@@ -158,7 +172,7 @@ async def get_player(game_id: str, player_id: str):
 async def submit_input(game_id: str, player_id: str, req: PlayerInput):
     """
     Submit a player's inputs.
-    Saves to the database AND writes to simulation_inputs/ as a file.
+    Saves to the database AND writes to input/ as a file.
     """
     db = await get_db()
     try:
@@ -181,6 +195,11 @@ async def submit_input(game_id: str, player_id: str, req: PlayerInput):
     # Write inputs to the filesystem for the simulation to read
     file_manager.write_player_input(game_id, player["number"], req.inputs)
 
+    # Notify the game room that a player has joined
+    await sio.emit("player_joined", {
+        "player_id": player_id,
+        "player_number": player["number"],
+    }, room=game_id)
     return {"status": "submitted"}
 
 
@@ -202,23 +221,28 @@ async def start_game(game_id: str):
         if not all(p["has_submitted"] for p in players):
             raise HTTPException(400, "Not all players have submitted inputs")
 
+        # Generate timestamp-based run ID
+        run_id = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+
         await db.execute(
-            "UPDATE games SET status = 'running' WHERE id = ?", (game_id,)
+            "UPDATE games SET status = 'running', run_id = ? WHERE id = ?",
+            (run_id, game_id),
         )
         await db.commit()
     finally:
         await db.close()
 
-    # Read player inputs from the filesystem
+    # Read player inputs and assemble scenario info
     player_inputs = file_manager.get_all_player_inputs(game_id)
+    scenario = {
+        "id": game["scenario_id"],
+        "name": game["scenario_name"],
+    }
 
-    # Run the demo simulation in background
-    # TODO: Replace this with triggering your actual simulation
-    asyncio.create_task(
-        _run_demo_simulation(game_id, player_inputs)
-    )
+    # Launch the simulation
+    await _launch_simulation(game_id, run_id, scenario, player_inputs)
 
-    return {"status": "running"}
+    return {"status": "running", "run_id": run_id}
 
 
 @api.get("/api/games")
@@ -245,10 +269,45 @@ async def list_games(status: str = None):
                 "id": g["id"],
                 "num_players": g["num_players"],
                 "status": g["status"],
+                "run_id": g["run_id"],
                 "created_at": g["created_at"],
             }
             for g in games
         ]
+    }
+
+
+# ═══════════════════════════════════════════
+#  REST Endpoints — Step Data (for refresh / late join)
+# ═══════════════════════════════════════════
+
+@api.get("/api/games/{game_id}/step/{step_num}")
+async def get_step_data(game_id: str, step_num: int):
+    """Get grid and agent data for a specific step."""
+    db = await get_db()
+    try:
+        cursor = await db.execute("SELECT run_id FROM games WHERE id = ?", (game_id,))
+        game = await cursor.fetchone()
+        if not game or not game["run_id"]:
+            raise HTTPException(404, "Run not found")
+    finally:
+        await db.close()
+
+    run_id = game["run_id"]
+    grid_data = file_manager.read_grid_results(run_id)
+    step_grid = [g for g in grid_data if g.get("step") == step_num]
+
+    agent_data = {}
+    for house_num in range(1, 5):
+        data = file_manager.read_agent_data(run_id, f"house_{house_num}")
+        step_data = [d for d in data if d.get("step") == step_num]
+        if step_data:
+            agent_data[f"house_{house_num}"] = step_data
+
+    return {
+        "step": step_num,
+        "grid": step_grid,
+        "agents": agent_data,
     }
 
 
@@ -258,17 +317,22 @@ async def list_games(status: str = None):
 
 @api.get("/api/games/{game_id}/files")
 async def list_game_files(game_id: str):
-    """List all output files for a game from simulation_outputs/."""
-    files = file_manager.list_output_files(game_id)
+    """List all output files for a game from simulation outputs."""
+    db = await get_db()
+    try:
+        cursor = await db.execute("SELECT run_id FROM games WHERE id = ?", (game_id,))
+        game = await cursor.fetchone()
+    finally:
+        await db.close()
+
+    run_id = game["run_id"] if game and game["run_id"] else game_id
+    files = file_manager.list_output_files(run_id)
     return {"game_id": game_id, "files": files}
 
 
 @api.get("/api/files/{file_path:path}")
 async def serve_output_file(file_path: str):
-    """
-    Serve a file from simulation_outputs/.
-    The file_path is relative to simulation_outputs/.
-    """
+    """Serve a file from simulation outputs."""
     try:
         full_path, exists = file_manager.read_output_file(file_path)
     except ValueError:
@@ -281,72 +345,178 @@ async def serve_output_file(file_path: str):
 
 
 # ═══════════════════════════════════════════
-#  Demo Simulation Runner (replace later)
+#  Simulation Launcher + Event Watcher
 # ═══════════════════════════════════════════
 
-async def _run_demo_simulation(game_id: str, player_inputs: dict):
+async def _launch_simulation(game_id: str, run_id: str, scenario: dict,
+                             player_inputs: dict):
     """
-    Simulates a running simulation by writing demo output files and
-    emitting WebSocket updates. Replace this entirely when you integrate
-    your real simulation.
-
-    When you integrate the real simulation, this function should:
-    1. Trigger the simulation (subprocess, import, or however it runs)
-    2. Watch simulation_outputs/<game_id>/ for new/changed files
-    3. Emit WebSocket updates as results appear
+    1. Write input YAML
+    2. Launch mock_simulator.py as subprocess
+    3. Start the event watcher task
     """
-    total_steps = 10
+    # Write the consolidated input YAML
+    input_path = file_manager.write_run_input_yaml(run_id, scenario, player_inputs)
+    output_dir = file_manager.get_run_output_dir(run_id)
 
+    # Launch the mock simulator as a subprocess
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            str(MOCK_SIMULATOR_PATH),
+            "--input", str(input_path),
+            "--output", str(output_dir),
+            "--delay", "1.5",
+            "--scenario", "negotiation",
+        ],
+        cwd=str(PROJECT_ROOT / "simulation"),
+    )
+
+    # Track this simulation in memory
+    active_simulations[game_id] = {
+        "process": proc,
+        "run_id": run_id,
+        "last_event_line": 0,
+        "current_step": -1,
+        "step_events_queue": {},
+        "mode": "playback",
+    }
+
+    # Start watching events in the background
+    asyncio.create_task(_watch_events(game_id))
+
+
+async def _watch_events(game_id: str):
+    """
+    Poll events.jsonl every 0.5s for new lines.
+    Queue events by step. In playback mode, auto-release step 0 immediately.
+    """
+    sim = active_simulations.get(game_id)
+    if not sim:
+        return
+
+    run_id = sim["run_id"]
+
+    while True:
+        new_events = file_manager.tail_events_file(run_id, sim["last_event_line"])
+
+        for event in new_events:
+            sim["last_event_line"] += 1
+            event_type = event.get("event")
+
+            if event_type == "simulation_complete":
+                await _broadcast_event(game_id, event)
+                await _handle_sim_complete(game_id)
+                return
+
+            step = event.get("step")
+
+            if step is not None:
+                # Queue events by step number
+                sim["step_events_queue"].setdefault(step, []).append(event)
+
+                # Auto-release step 0 when it completes (first step plays immediately)
+                if step == 0 and event_type == "step_complete":
+                    await _release_step_events(game_id, 0)
+            else:
+                # Global events (simulation_started) broadcast immediately
+                await _broadcast_event(game_id, event)
+
+        # Check if process died unexpectedly
+        if sim["process"].poll() is not None and not new_events:
+            status = file_manager.read_status(run_id)
+            if not status or status.get("state") != "completed":
+                await sio.emit("simulation_error", {
+                    "error": "Simulation process terminated unexpectedly",
+                }, room=game_id)
+            return
+
+        await asyncio.sleep(0.5)
+
+
+async def _release_step_events(game_id: str, step: int):
+    """Broadcast queued events for a step with deliberate delays."""
+    sim = active_simulations.get(game_id)
+    if not sim:
+        return
+
+    events = sim["step_events_queue"].get(step, [])
+    run_id = sim["run_id"]
+
+    for event in events:
+        event_type = event.get("event")
+
+        # Enrich step_complete with grid + agent data
+        if event_type == "step_complete":
+            grid_data = file_manager.read_grid_results(run_id)
+            step_grid = [g for g in grid_data if g.get("step") == step]
+            if step_grid:
+                event["grid_data"] = step_grid[-1]
+
+        await _broadcast_event(game_id, event)
+
+        # Deliberate delays between event types for readability
+        if event_type == "agent_speech":
+            await asyncio.sleep(1.5)
+        elif event_type == "grid_violation":
+            await asyncio.sleep(2.0)
+        elif event_type == "decisions_made":
+            await asyncio.sleep(1.0)
+        else:
+            await asyncio.sleep(0.3)
+
+    # Send player-specific data for this step
+    num_players = len(file_manager.get_all_player_inputs(
+        # Find the game_id's input folder — use the game_id
+        game_id
+    )) or 4
+
+    for house_num in range(1, num_players + 1):
+        agent_data = file_manager.read_agent_data(run_id, f"house_{house_num}")
+        step_data = [d for d in agent_data if d.get("step") == step]
+        if step_data:
+            player_room = f"{game_id}:player:{house_num}"
+            await sio.emit("player_step_data", {
+                "step": step,
+                "agent_data": step_data[-1],
+            }, room=player_room)
+
+    sim["current_step"] = step
+
+
+async def _broadcast_event(game_id: str, event: dict):
+    """Send an event to the game room via WebSocket."""
+    event_type = event.get("event", "simulation_event")
+
+    # Map to specific WebSocket event names
+    ws_event_map = {
+        "simulation_started": "simulation_started",
+        "step_started": "step_started",
+        "decisions_made": "decisions_made",
+        "grid_violation": "grid_violation",
+        "negotiation_started": "negotiation_started",
+        "agent_speech": "agent_speech",
+        "step_complete": "step_complete",
+        "simulation_complete": "simulation_complete",
+    }
+
+    ws_event = ws_event_map.get(event_type, "simulation_event")
+    await sio.emit(ws_event, event, room=game_id)
+
+
+async def _handle_sim_complete(game_id: str):
+    """Mark game as finished in the database."""
+    db = await get_db()
     try:
-        await sio.emit("phase_change", {"phase": "running"}, room=game_id)
+        await db.execute(
+            "UPDATE games SET status = 'finished' WHERE id = ?", (game_id,)
+        )
+        await db.commit()
+    finally:
+        await db.close()
 
-        for step in range(1, total_steps + 1):
-            await asyncio.sleep(1)  # Simulate computation time
-
-            # Write demo output files (mimics what your real simulation would do)
-            file_manager.write_demo_outputs(game_id, player_inputs, step, total_steps)
-
-            # Emit progress
-            await sio.emit(
-                "progress",
-                {"percent": int((step / total_steps) * 100)},
-                room=game_id,
-            )
-
-            # Emit general update
-            await sio.emit(
-                "general_update",
-                {"step": step, "message": f"Completed step {step}/{total_steps}"},
-                room=game_id,
-            )
-
-            # Emit player-specific updates
-            for player_num in player_inputs:
-                player_room = f"{game_id}:player:{player_num}"
-                await sio.emit(
-                    "simulation_update",
-                    {
-                        "step": step,
-                        "message": f"Player {player_num} result for step {step}",
-                    },
-                    room=player_room,
-                )
-
-        # Mark as finished
-        db = await get_db()
-        try:
-            await db.execute(
-                "UPDATE games SET status = 'finished' WHERE id = ?", (game_id,)
-            )
-            await db.commit()
-        finally:
-            await db.close()
-
-        await sio.emit("phase_change", {"phase": "finished"}, room=game_id)
-
-    except Exception as e:
-        print(f"Simulation error for game {game_id}: {e}")
-        await sio.emit("general_update", {"error": str(e)}, room=game_id)
+    # Clean up active simulation entry
+    active_simulations.pop(game_id, None)
 
 
 # ═══════════════════════════════════════════
@@ -366,7 +536,7 @@ async def connect(sid, environ):
         return False  # Reject connection
 
     # Everyone joins the game room (for general updates)
-    sio.enter_room(sid, game_id)
+    await sio.enter_room(sid, game_id)
 
     # Players also join their personal room (for player-specific updates)
     if player_id and player_id != "main":
@@ -377,7 +547,7 @@ async def connect(sid, environ):
             )
             player = await cursor.fetchone()
             if player:
-                sio.enter_room(sid, f"{game_id}:player:{player['number']}")
+                await sio.enter_room(sid, f"{game_id}:player:{player['number']}")
         finally:
             await db.close()
 
@@ -389,6 +559,61 @@ async def disconnect(sid):
     print(f"Client {sid} disconnected")
 
 
+@sio.event
+async def request_step(sid, data):
+    """GM clicks Step button — release the next step's queued events."""
+    game_id = data.get("game_id")
+    sim = active_simulations.get(game_id)
+    if not sim:
+        return
+
+    next_step = sim["current_step"] + 1
+
+    if sim["mode"] == "playback":
+        # Release queued events for the next step
+        if next_step in sim["step_events_queue"]:
+            await _release_step_events(game_id, next_step)
+        else:
+            # Events not yet available — notify the GM
+            await sio.emit("step_not_ready", {
+                "message": f"Step {next_step} data not yet available",
+            }, to=sid)
+    else:
+        # sim_control mode — tell the simulator to proceed
+        file_manager.write_control(sim["run_id"], "proceed")
+
+
+@sio.event
+async def request_stop(sid, data):
+    """GM clicks Stop button — terminate the simulation."""
+    game_id = data.get("game_id")
+    sim = active_simulations.get(game_id)
+    if not sim:
+        return
+
+    # Kill the subprocess
+    try:
+        sim["process"].terminate()
+    except OSError:
+        pass
+
+    # Update database
+    db = await get_db()
+    try:
+        await db.execute(
+            "UPDATE games SET status = 'stopped' WHERE id = ?", (game_id,)
+        )
+        await db.commit()
+    finally:
+        await db.close()
+
+    # Notify all clients
+    await sio.emit("simulation_stopped", {}, room=game_id)
+
+    # Clean up
+    active_simulations.pop(game_id, None)
+
+
 # ── Mount Socket.IO onto FastAPI ──
 
-app = socketio.ASGIApp(sio, other_app=api)
+app = socketio.ASGIApp(sio, other_asgi_app=api)

@@ -3,9 +3,6 @@ import './FormControls.css'
 
 /**
  * FormLabel — Highlighted section heading above a control group.
- *
- * Usage:
- *   <FormLabel>EV Battery Size:</FormLabel>
  */
 function FormLabel({ children }) {
   return <span className="form-label">{children}</span>
@@ -13,9 +10,6 @@ function FormLabel({ children }) {
 
 /**
  * FormAttr — Key-value attribute row.
- *
- * Usage:
- *   <FormAttr label="Type" value="Detached" />
  */
 function FormAttr({ label, value }) {
   return (
@@ -29,11 +23,18 @@ function FormAttr({ label, value }) {
 /**
  * RangeSlider — Single-handle range slider with value display.
  *
- * Props:
- *   min, max, step, defaultValue, unit (string shown after value)
+ * Supports both controlled (value + onChange) and uncontrolled modes.
+ *   Controlled:   <RangeSlider value={val} onChange={setVal} min={0} max={7} />
+ *   Uncontrolled:  <RangeSlider min={0} max={7} defaultValue={5} />
  */
-function RangeSlider({ min = 0, max = 100, step = 1, defaultValue = 50, unit = '' }) {
-  const [val, setVal] = useState(defaultValue)
+function RangeSlider({ min = 0, max = 100, step = 1, defaultValue = 50, unit = '', value, onChange }) {
+  const [internal, setInternal] = useState(defaultValue)
+  const current = value !== undefined ? value : internal
+  const handleChange = e => {
+    const v = Number(e.target.value)
+    if (onChange) onChange(v)
+    else setInternal(v)
+  }
 
   return (
     <div className="form-range">
@@ -44,10 +45,10 @@ function RangeSlider({ min = 0, max = 100, step = 1, defaultValue = 50, unit = '
           min={min}
           max={max}
           step={step}
-          value={val}
-          onChange={e => setVal(Number(e.target.value))}
+          value={current}
+          onChange={handleChange}
         />
-        <span className="form-range__value">{val}{unit}</span>
+        <span className="form-range__value">{current}{unit}</span>
       </div>
     </div>
   )
@@ -56,8 +57,9 @@ function RangeSlider({ min = 0, max = 100, step = 1, defaultValue = 50, unit = '
 /**
  * DualRangeSlider — Two-handle range slider (e.g. Time of Use).
  *
- * Props:
- *   min, max, step, defaultLow, defaultHigh, formatLabel (function)
+ * Supports both controlled and uncontrolled modes.
+ *   Controlled:   <DualRangeSlider valueLow={low} valueHigh={high} onChangeLow={setLow} onChangeHigh={setHigh} />
+ *   Uncontrolled:  <DualRangeSlider defaultLow={8} defaultHigh={17} />
  */
 function DualRangeSlider({
   min = 0,
@@ -66,9 +68,16 @@ function DualRangeSlider({
   defaultLow = 8,
   defaultHigh = 17,
   formatLabel,
+  valueLow,
+  valueHigh,
+  onChangeLow,
+  onChangeHigh,
 }) {
-  const [low, setLow] = useState(defaultLow)
-  const [high, setHigh] = useState(defaultHigh)
+  const [internalLow, setInternalLow] = useState(defaultLow)
+  const [internalHigh, setInternalHigh] = useState(defaultHigh)
+
+  const low = valueLow !== undefined ? valueLow : internalLow
+  const high = valueHigh !== undefined ? valueHigh : internalHigh
 
   const fmt = formatLabel || (v => v)
 
@@ -77,12 +86,18 @@ function DualRangeSlider({
 
   const handleLow = e => {
     const v = Number(e.target.value)
-    if (v <= high) setLow(v)
+    if (v <= high) {
+      if (onChangeLow) onChangeLow(v)
+      else setInternalLow(v)
+    }
   }
 
   const handleHigh = e => {
     const v = Number(e.target.value)
-    if (v >= low) setHigh(v)
+    if (v >= low) {
+      if (onChangeHigh) onChangeHigh(v)
+      else setInternalHigh(v)
+    }
   }
 
   return (
@@ -121,9 +136,17 @@ function DualRangeSlider({
 
 /**
  * PercentInput — Small numeric input with % symbol.
+ *
+ * Supports both controlled (value + onChange) and uncontrolled modes.
  */
-function PercentInput({ defaultValue = '' }) {
-  const [val, setVal] = useState(defaultValue)
+function PercentInput({ defaultValue = '', value, onChange }) {
+  const [internal, setInternal] = useState(defaultValue)
+  const current = value !== undefined ? value : internal
+  const handleChange = e => {
+    const v = e.target.value
+    if (onChange) onChange(v)
+    else setInternal(v)
+  }
 
   return (
     <div className="form-percent">
@@ -132,8 +155,8 @@ function PercentInput({ defaultValue = '' }) {
         className="form-percent__input"
         min={0}
         max={100}
-        value={val}
-        onChange={e => setVal(e.target.value)}
+        value={current}
+        onChange={handleChange}
         placeholder=""
       />
       <span className="form-percent__symbol">%</span>
@@ -145,8 +168,6 @@ function PercentInput({ defaultValue = '' }) {
  * CooperationToggle — Binary toggle: Co-operative / Non co-operative.
  *
  * Supports both controlled (value + onChange) and uncontrolled modes.
- *   Controlled:   <CooperationToggle value={val} onChange={setVal} />
- *   Uncontrolled:  <CooperationToggle />
  */
 function CooperationToggle({ value, onChange }) {
   const [internal, setInternal] = useState(null)
@@ -186,8 +207,6 @@ function CooperationToggle({ value, onChange }) {
  * AgentTextArea — Text area for describing agent behaviour.
  *
  * Supports both controlled (value + onChange) and uncontrolled modes.
- *   Controlled:   <AgentTextArea value={val} onChange={setVal} />
- *   Uncontrolled:  <AgentTextArea />
  */
 function AgentTextArea({ value, onChange, placeholder = '' }) {
   const [internal, setInternal] = useState('')

@@ -20,8 +20,12 @@ PROJECT_ROOT = WEB_DIR.parent
 # ── Simulation paths ──
 
 SIMULATION_ROOT = PROJECT_ROOT / "simulation"
-SIMULATION_INPUTS_DIR = SIMULATION_ROOT / "simulation_inputs"
-SIMULATION_OUTPUTS_DIR = SIMULATION_ROOT / "simulation_outputs"
+SIMULATION_INPUTS_DIR = SIMULATION_ROOT / "input"
+SIMULATION_OUTPUTS_DIR = SIMULATION_ROOT / "output" / "runs"
+
+# ── Mock simulator path ──
+
+MOCK_SIMULATOR_PATH = SIMULATION_ROOT / "mock_simulator.py"
 
 # ── Database ──
 

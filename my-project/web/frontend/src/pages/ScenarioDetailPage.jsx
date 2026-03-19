@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
 import ActionButton from '../components/ActionButton'
 import './ScenarioDetailPage.css'
 
-/**
- * Static scenario data — one entry per scenario.
- * This will eventually come from the backend.
- */
 const SCENARIOS = {
   1: {
     title: 'Scenario I',
@@ -43,8 +39,10 @@ const SCENARIOS = {
 
 function ScenarioDetailPage() {
   const { scenarioId } = useParams()
+  const navigate = useNavigate()
   const scenario = SCENARIOS[scenarioId]
   const [participants, setParticipants] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
 
   if (!scenario) {
     return <div className="left-panel"><p>Scenario not found.</p></div>
@@ -52,6 +50,28 @@ function ScenarioDetailPage() {
 
   const participantNum = Number(participants)
   const isValid = participants !== '' && participantNum >= 1 && participantNum <= 4
+
+  const handleCreateGame = async () => {
+    if (!isValid || isCreating) return
+    setIsCreating(true)
+
+    try {
+      const res = await fetch('/api/games', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          num_players: participantNum,
+          scenario_id: Number(scenarioId),
+          scenario_name: scenario.title,
+        }),
+      })
+      const data = await res.json()
+      navigate(`/game/${data.game_id}/lobby`)
+    } catch (err) {
+      console.error('Failed to create game:', err)
+      setIsCreating(false)
+    }
+  }
 
   return (
     <PageLayout variant="sidebar">
@@ -88,8 +108,8 @@ function ScenarioDetailPage() {
         <ActionButton type="exit" to="/" label="Exit Simulation" />
         <ActionButton
           type="forward"
-          to={`/game/demo-${scenarioId}/lobby`}
-          disabled={!isValid}
+          onClick={handleCreateGame}
+          disabled={!isValid || isCreating}
         />
       </RightPanel>
     </PageLayout>

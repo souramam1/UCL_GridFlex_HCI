@@ -1,79 +1,66 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
 import ActionButton from '../components/ActionButton'
+import { useSocket } from '../hooks/useSocket'
 import './GameLobbyPage.css'
 
-/**
- * Participant colour order — maps to the four households.
- */
 const PARTICIPANT_COLORS = ['blue', 'magenta', 'green', 'gold']
 
-/**
- * GameLobbyPage — Game Master's lobby screen.
- *
- * Shows join links for each participant, coloured status bars
- * indicating who has joined, and a "Run Simulation" button.
- * The button is disabled until all participants have joined.
- *
- * Reads joined participants from localStorage (temporary —
- * will be replaced by WebSocket in production).
- *
- * Route: /game/:gameId/lobby
- */
 function GameLobbyPage() {
   const { gameId } = useParams()
   const navigate = useNavigate()
-  const participantCount = 4
+  const socket = useSocket(gameId, null)
 
-  const getJoined = useCallback(() => {
-    const key = `gridflex_joined_${gameId}`
-    return JSON.parse(localStorage.getItem(key) || '[]')
-  }, [gameId])
+  const [gameData, setGameData] = useState(null)
+  const [isStarting, setIsStarting] = useState(false)
 
-  const [joinedIds, setJoinedIds] = useState([])
-
-  // Reset join state and game flags when lobby loads (fresh start each time)
-  useEffect(() => {
-    localStorage.setItem(`gridflex_joined_${gameId}`, '[]')
-    localStorage.removeItem(`gridflex_started_${gameId}`)
-    localStorage.removeItem(`gridflex_stopped_${gameId}`)
-    setJoinedIds([])
-  }, [gameId])
-
-  // Handle Run Simulation click — set started flag then navigate
-  const handleStart = () => {
-    localStorage.setItem(`gridflex_started_${gameId}`, 'true')
-    navigate(`/game/${gameId}/dashboard`)
+  const refreshGameData = () => {
+    fetch(`/api/games/${gameId}`)
+      .then(r => r.json())
+      .then(setGameData)
+      .catch(err => console.error('Failed to fetch game:', err))
   }
 
-  // Listen for localStorage changes from other tabs
+  // Fetch game data on mount + poll every 3s as fallback
   useEffect(() => {
-    const handleStorage = (e) => {
-      if (e.key === `gridflex_joined_${gameId}`) {
-        setJoinedIds(JSON.parse(e.newValue || '[]'))
-      }
+    refreshGameData()
+    const interval = setInterval(refreshGameData, 3000)
+    return () => clearInterval(interval)
+  }, [gameId])
+
+  // Also refresh immediately on WebSocket player_joined event
+  useEffect(() => {
+    if (!socket) return
+    socket.on('player_joined', refreshGameData)
+    return () => socket.off('player_joined', refreshGameData)
+  }, [socket, gameId])
+
+  const handleStart = async () => {
+    if (isStarting) return
+    setIsStarting(true)
+
+    try {
+      await fetch(`/api/games/${gameId}/start`, { method: 'POST' })
+      navigate(`/game/${gameId}/dashboard`)
+    } catch (err) {
+      console.error('Failed to start simulation:', err)
+      setIsStarting(false)
     }
-    window.addEventListener('storage', handleStorage)
+  }
 
-    // Also poll every 2s for same-tab updates
-    const interval = setInterval(() => {
-      setJoinedIds(getJoined())
-    }, 2000)
+  if (!gameData) {
+    return <div className="left-panel"><p>Loading...</p></div>
+  }
 
-    return () => {
-      window.removeEventListener('storage', handleStorage)
-      clearInterval(interval)
-    }
-  }, [gameId, getJoined])
-
-  const participants = Array.from({ length: participantCount }, (_, i) => ({
-    id: i + 1,
-    color: PARTICIPANT_COLORS[i],
-    joined: joinedIds.includes(i + 1),
-    link: `https://gridflex_participant_${i + 1}`,
+  const participants = gameData.players.map((p, i) => ({
+    id: p.id,
+    number: p.number,
+    color: PARTICIPANT_COLORS[i] || 'gray',
+    joined: p.has_submitted,
+    link: `gridflex_participant_${p.number}`,
   }))
 
   const allJoined = participants.every(p => p.joined)
@@ -99,7 +86,7 @@ function GameLobbyPage() {
           ))}
         </div>
 
-        <p className="game-lobby__participants-heading">Participants Joined :</p>
+        <p className="game-lobby__participants-heading">Participants Ready :</p>
 
         <div className="game-lobby__status-bars">
           {participants.map(p => (
@@ -117,7 +104,7 @@ function GameLobbyPage() {
           type="forward"
           onClick={handleStart}
           label="Run Simulation"
-          disabled={!allJoined}
+          disabled={!allJoined || isStarting}
         />
       </RightPanel>
     </PageLayout>

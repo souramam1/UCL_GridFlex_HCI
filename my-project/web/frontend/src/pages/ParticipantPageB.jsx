@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
@@ -11,9 +11,6 @@ import {
 } from '../components/FormControls'
 import './ParticipantPageB.css'
 
-/**
- * Static household data — mirrors ParticipantPageA.
- */
 const HOUSEHOLDS = {
   1: { name: 'Household A', letter: 'A', color: 'blue' },
   2: { name: 'Household B', letter: 'B', color: 'magenta' },
@@ -21,27 +18,61 @@ const HOUSEHOLDS = {
   4: { name: 'Household D', letter: 'D', color: 'gold' },
 }
 
-/**
- * ParticipantPageB — Step 2 of participant setup.
- *
- * Displays cooperation level toggle and a text area
- * for describing agent behaviour. Both must be filled
- * before the user can continue.
- *
- * Route: /game/:gameId/player/:playerId/preferences
- */
 function ParticipantPageB() {
   const { gameId, playerId } = useParams()
-  const household = HOUSEHOLDS[playerId]
+  const navigate = useNavigate()
+  const [playerNumber, setPlayerNumber] = useState(null)
   const [cooperation, setCooperation] = useState(null)
   const [agentText, setAgentText] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
+  useEffect(() => {
+    fetch(`/api/games/${gameId}/player/${playerId}`)
+      .then(r => r.json())
+      .then(data => setPlayerNumber(data.number))
+      .catch(err => console.error('Failed to fetch player:', err))
+  }, [gameId, playerId])
+
+  if (!playerNumber) {
+    return <div className="left-panel"><p>Loading...</p></div>
+  }
+
+  const household = HOUSEHOLDS[playerNumber]
   if (!household) {
     return <div className="left-panel"><p>Household not found.</p></div>
   }
 
   const titleColorClass = `participant-b__title--${household.color}`
   const isValid = cooperation !== null && agentText.trim().length > 0
+
+  const handleSubmit = async () => {
+    if (!isValid || isSubmitting) return
+    setIsSubmitting(true)
+
+    try {
+      const pageAData = JSON.parse(
+        sessionStorage.getItem(`gridflex_inputs_${gameId}_${playerId}`) || '{}'
+      )
+
+      const fullInputs = {
+        ...pageAData,
+        cooperative: cooperation === 'cooperative',
+        agent_behaviour: agentText,
+      }
+
+      await fetch(`/api/games/${gameId}/player/${playerId}/input`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: fullInputs }),
+      })
+
+      sessionStorage.removeItem(`gridflex_inputs_${gameId}_${playerId}`)
+      navigate(`/game/${gameId}/player/${playerId}/waiting`)
+    } catch (err) {
+      console.error('Failed to submit inputs:', err)
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <PageLayout variant="sidebar">
@@ -66,8 +97,8 @@ function ParticipantPageB() {
       <RightPanel variant="action" color={household.color} compact>
         <ActionButton
           type="forward"
-          to={`/game/${gameId}/player/${playerId}/waiting`}
-          disabled={!isValid}
+          onClick={handleSubmit}
+          disabled={!isValid || isSubmitting}
         />
       </RightPanel>
     </PageLayout>
