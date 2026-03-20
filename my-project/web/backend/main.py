@@ -357,7 +357,7 @@ async def _launch_simulation(game_id: str, run_id: str, scenario: dict,
     """
     # Write the consolidated input YAML
     input_path = file_manager.write_run_input_yaml(run_id, scenario, player_inputs)
-    output_dir = file_manager.get_run_output_dir(run_id)
+    run_dir = file_manager.get_run_dir(run_id)
 
     # Launch the mock simulator as a subprocess
     proc = subprocess.Popen(
@@ -365,7 +365,7 @@ async def _launch_simulation(game_id: str, run_id: str, scenario: dict,
             sys.executable,
             str(MOCK_SIMULATOR_PATH),
             "--input", str(input_path),
-            "--output", str(output_dir),
+            "--run-dir", str(run_dir),
             "--delay", "1.5",
             "--scenario", "negotiation",
         ],

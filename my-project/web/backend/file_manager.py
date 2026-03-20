@@ -4,6 +4,15 @@ File manager — the ONLY module that touches the simulation input/output folder
 Every read/write between the web app and the simulation filesystem goes through
 this module. This keeps the boundary clean and makes it easy to change file
 formats or folder structures later without touching the rest of the backend.
+
+Run directory layout:
+    simulation/runs/<run_id>/
+        input/              <-- consolidated YAML config
+        control/            <-- handshake files (events, status, control)
+        output/             <-- simulation results
+            collective/     <-- grid_results.jsonl
+            per_agent/      <-- house_N.jsonl
+            summary/        <-- network_stats.json
 """
 
 import json
@@ -12,7 +21,24 @@ from typing import Any
 
 import yaml
 
-from config import SIMULATION_INPUTS_DIR, SIMULATION_OUTPUTS_DIR
+from config import SIMULATION_INPUTS_DIR, SIMULATION_RUNS_DIR
+
+
+# ── Helpers ──
+
+def _run_dir(run_id: str) -> Path:
+    """Root directory for a run: simulation/runs/<run_id>/"""
+    return SIMULATION_RUNS_DIR / run_id
+
+
+def _control_dir(run_id: str) -> Path:
+    """Control directory: simulation/runs/<run_id>/control/"""
+    return _run_dir(run_id) / "control"
+
+
+def _output_dir(run_id: str) -> Path:
+    """Output directory: simulation/runs/<run_id>/output/"""
+    return _run_dir(run_id) / "output"
 
 
 # ═══════════════════════════════════════════
@@ -24,7 +50,7 @@ def write_player_input(game_id: str, player_number: int, inputs: dict) -> Path:
     Write a single player's inputs as JSON (intermediate storage).
     The backend consolidates these into a YAML file when the GM starts the sim.
 
-    Creates: input/<game_id>/player_<n>.json
+    Creates: simulation/input/<game_id>/player_<n>.json
     """
     game_dir = SIMULATION_INPUTS_DIR / game_id
     game_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +85,7 @@ def write_run_input_yaml(run_id: str, scenario: dict, player_inputs: dict[int, d
     """
     Assemble and write the simulation input YAML file.
 
-    Creates: input/<run_id>.yaml
+    Creates: simulation/runs/<run_id>/input/<run_id>.yaml
 
     Args:
         run_id: Timestamp-based run identifier (e.g. "run_2026-03-19_14-30-00")
@@ -88,28 +114,30 @@ def write_run_input_yaml(run_id: str, scenario: dict, player_inputs: dict[int, d
         "households": households,
     }
 
-    file_path = SIMULATION_INPUTS_DIR / f"{run_id}.yaml"
-    file_path.parent.mkdir(parents=True, exist_ok=True)
+    input_dir = _run_dir(run_id) / "input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+
+    file_path = input_dir / f"{run_id}.yaml"
     file_path.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
 
     return file_path
 
 
 # ═══════════════════════════════════════════
-#  READING OUTPUTS (simulation → web)
+#  READING CONTROL FILES (simulation ↔ web)
 # ═══════════════════════════════════════════
 
-def get_run_output_dir(run_id: str) -> Path:
-    """Return the output directory for a run."""
-    return SIMULATION_OUTPUTS_DIR / run_id
+def get_run_dir(run_id: str) -> Path:
+    """Return the root directory for a run (passed as --output to simulator)."""
+    return _run_dir(run_id)
 
 
 def tail_events_file(run_id: str, after_line: int = 0) -> list[dict]:
     """
-    Read new lines from events.jsonl starting after the given line number.
+    Read new lines from control/events.jsonl starting after the given line number.
     Non-blocking: returns empty list if file missing or no new lines.
     """
-    events_path = SIMULATION_OUTPUTS_DIR / run_id / "events.jsonl"
+    events_path = _control_dir(run_id) / "events.jsonl"
     if not events_path.exists():
         return []
 
@@ -128,8 +156,8 @@ def tail_events_file(run_id: str, after_line: int = 0) -> list[dict]:
 
 
 def read_status(run_id: str) -> dict | None:
-    """Read and parse status.json for a run."""
-    path = SIMULATION_OUTPUTS_DIR / run_id / "status.json"
+    """Read and parse control/status.json for a run."""
+    path = _control_dir(run_id) / "status.json"
     if not path.exists():
         return None
     try:
@@ -139,15 +167,15 @@ def read_status(run_id: str) -> dict | None:
 
 
 def write_control(run_id: str, command: str):
-    """Write a command to control.json (e.g. 'pause', 'proceed')."""
-    path = SIMULATION_OUTPUTS_DIR / run_id / "control.json"
+    """Write a command to control/control.json (e.g. 'pause', 'proceed')."""
+    path = _control_dir(run_id) / "control.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"command": command}))
 
 
 def read_initial_state(run_id: str) -> dict | None:
-    """Read initial_state.json for a run."""
-    path = SIMULATION_OUTPUTS_DIR / run_id / "initial_state.json"
+    """Read control/initial_state.json for a run."""
+    path = _control_dir(run_id) / "initial_state.json"
     if not path.exists():
         return None
     try:
@@ -156,9 +184,13 @@ def read_initial_state(run_id: str) -> dict | None:
         return None
 
 
+# ═══════════════════════════════════════════
+#  READING OUTPUTS (simulation → web)
+# ═══════════════════════════════════════════
+
 def read_grid_results(run_id: str) -> list[dict]:
-    """Read all lines from collective/grid_results.jsonl."""
-    path = SIMULATION_OUTPUTS_DIR / run_id / "collective" / "grid_results.jsonl"
+    """Read all lines from output/collective/grid_results.jsonl."""
+    path = _output_dir(run_id) / "collective" / "grid_results.jsonl"
     if not path.exists():
         return []
     results = []
@@ -174,8 +206,8 @@ def read_grid_results(run_id: str) -> list[dict]:
 
 
 def read_agent_data(run_id: str, house_id: str) -> list[dict]:
-    """Read all lines from per_agent/<house_id>.jsonl."""
-    path = SIMULATION_OUTPUTS_DIR / run_id / "per_agent" / f"{house_id}.jsonl"
+    """Read all lines from output/per_agent/<house_id>.jsonl."""
+    path = _output_dir(run_id) / "per_agent" / f"{house_id}.jsonl"
     if not path.exists():
         return []
     results = []
@@ -191,8 +223,8 @@ def read_agent_data(run_id: str, house_id: str) -> list[dict]:
 
 
 def read_network_stats(run_id: str) -> dict | None:
-    """Read summary/network_stats.json."""
-    path = SIMULATION_OUTPUTS_DIR / run_id / "summary" / "network_stats.json"
+    """Read output/summary/network_stats.json."""
+    path = _output_dir(run_id) / "summary" / "network_stats.json"
     if not path.exists():
         return None
     try:
@@ -205,18 +237,18 @@ def read_network_stats(run_id: str) -> dict | None:
 #  GENERAL FILE ACCESS (for DataLog etc.)
 # ═══════════════════════════════════════════
 
-def list_output_files(game_id: str) -> list[dict]:
-    """List all output files for a game/run."""
-    game_dir = SIMULATION_OUTPUTS_DIR / game_id
-    if not game_dir.exists():
+def list_output_files(run_id: str) -> list[dict]:
+    """List all files for a run (across input/, control/, and output/)."""
+    run_root = _run_dir(run_id)
+    if not run_root.exists():
         return []
 
     files = []
-    for f in game_dir.rglob("*"):
+    for f in run_root.rglob("*"):
         if f.is_file() and not f.name.startswith("."):
             files.append({
                 "name": f.name,
-                "path": str(f.relative_to(SIMULATION_OUTPUTS_DIR)),
+                "path": str(f.relative_to(SIMULATION_RUNS_DIR)),
                 "size": f.stat().st_size,
                 "modified": f.stat().st_mtime,
             })
@@ -226,28 +258,28 @@ def list_output_files(game_id: str) -> list[dict]:
 
 def read_output_file(relative_path: str) -> tuple[Path, bool]:
     """
-    Resolve a relative path within simulation outputs and return the full path.
+    Resolve a relative path within simulation/runs/ and return the full path.
     Raises ValueError on path traversal attempts.
     """
-    full_path = (SIMULATION_OUTPUTS_DIR / relative_path).resolve()
+    full_path = (SIMULATION_RUNS_DIR / relative_path).resolve()
 
-    if not str(full_path).startswith(str(SIMULATION_OUTPUTS_DIR.resolve())):
+    if not str(full_path).startswith(str(SIMULATION_RUNS_DIR.resolve())):
         raise ValueError("Invalid path: attempted directory traversal")
 
     return full_path, full_path.exists()
 
 
-def read_output_json(game_id: str, filename: str) -> Any | None:
-    """Read and parse a JSON file from output/<game_id>/<filename>."""
-    file_path = SIMULATION_OUTPUTS_DIR / game_id / filename
+def read_output_json(run_id: str, filename: str) -> Any | None:
+    """Read and parse a JSON file from a run's output directory."""
+    file_path = _output_dir(run_id) / filename
     if not file_path.exists():
         return None
     return json.loads(file_path.read_text())
 
 
-def game_has_outputs(game_id: str) -> bool:
-    """Check whether any output files exist for a game."""
-    game_dir = SIMULATION_OUTPUTS_DIR / game_id
-    if not game_dir.exists():
+def game_has_outputs(run_id: str) -> bool:
+    """Check whether any output files exist for a run."""
+    run_root = _run_dir(run_id)
+    if not run_root.exists():
         return False
-    return any(game_dir.rglob("*"))
+    return any(run_root.rglob("*"))

@@ -1,0 +1,546 @@
+================================================================================
+  GRIDFLEX DATA FLOW DIAGRAM
+  Simulator  <-->  Backend (main.py)  <-->  Frontend (React)
+================================================================================
+
+
+                        INPUT YAML (written by backend before launch)
+                        =============================================
+                        simulation/input/<run_id>.yaml
+
+  Backend writes:       run_id, scenario {id, name}, players: N
+  (file_manager.py)     households:
+                          house_1:
+                            player_id         (string)
+                            ev_battery_kwh    (float, default 35.0)
+                            car_away_from     (HH:MM, default "07:00")
+                            car_away_until    (HH:MM, default "21:00")
+                            target_soc_pct    (float, default 60.0)
+                            initial_soc_pct   (float, default 20.0)
+                            cooperative       (bool, default true)
+                            agent_behaviour   (string, default "")
+
+
+                        CLI LAUNCH
+                        ==========
+  Backend runs:         python mock_simulator.py
+                          --input  <yaml_path>
+                          --output <output_dir>
+                          --delay  1.5
+                          --scenario negotiation
+
+
+
+================================================================================
+  SIMULATOR --> BACKEND : File-based communication (polled every 0.5s)
+================================================================================
+
+  events.jsonl  (append-only, one JSON line per event)
+  +------------------------------------------------------------------+
+  |  Backend reads via: file_manager.tail_events_file(run_id, after)  |
+  +------------------------------------------------------------------+
+
+  Events are routed by _watch_events() in main.py:
+
+  +---------------------+---------------------------------------------+
+  | Event Type          | Backend Routing                             |
+  +---------------------+---------------------------------------------+
+  | simulation_started  | BROADCAST IMMEDIATELY to game room          |
+  | simulation_complete | HELD until GM steps through all steps       |
+  | (has "step" field)  | QUEUED by step number in step_events_queue  |
+  | (no "step" field)   | BROADCAST IMMEDIATELY                       |
+  +---------------------+---------------------------------------------+
+
+  Queued events are released when GM clicks Step:
+    request_step --> _release_step_events(game_id, next_step)
+
+
+  EVENTS AND THEIR PAYLOADS:
+  ==========================
+
+  [1] simulation_started  (broadcast immediately)
+  +------------------+-----------+----------------------------------------+
+  | Field            | Type      | Notes                                  |
+  +------------------+-----------+----------------------------------------+
+  | event            | string    | "simulation_started"                   |
+  | run_id           | string    | From input YAML                        |
+  | total_steps      | int       | 8                                      |
+  | agent_names      | [string]  | ["House 1", "House 2", ...]            |
+  | target_soc       | {str:num} | {"House 1": 80, "House 2": 75, ...}    |
+  | time_labels      | [string]  | ["2026-01-15 21:00", "... 21:30", ...] |
+  | load_limit_kw    | number    | 30 (negotiation) or 9999 (clean)       |
+  +------------------+-----------+----------------------------------------+
+
+  [2] step_started  (queued by step)
+  +------------------+-----------+-------------------+
+  | event            | string    | "step_started"    |
+  | step             | int       | 1-based           |
+  | sim_time         | string    | "YYYY-MM-DD HH:MM"|
+  +------------------+-----------+-------------------+
+
+  [3] decisions_made  (queued by step -- emitted for BOTH round 1 and round 2)
+  +------------------+-----------+--------------------------------------+
+  | event            | string    | "decisions_made"                     |
+  | step             | int       |                                      |
+  | round            | int       | 1 (initial) or 2 (post-negotiation)  |
+  | grid_ok          | bool      | Round 1: dynamic. Round 2: True      |
+  | total_load_kw    | number    | Sum of active chargers               |
+  | decisions        | {str:str} | {"House 1":"Yes", "House 2":"No"...} |
+  +------------------+-----------+--------------------------------------+
+
+  [4] grid_violation  (queued by step -- only if round 1 grid_ok=false)
+  +---------------------------+-----------+-----------------------------+
+  | event                     | string    | "grid_violation"            |
+  | step                      | int       |                             |
+  | round                     | int       | Always 1                    |
+  | total_load_kw             | number    | The violating load          |
+  | load_limit_kw             | number    | The threshold               |
+  | max_line_loading_percent  | float     | load/limit * 100            |
+  | overloaded_lines          | [string]  | e.g. ["line_11"]            |
+  +---------------------------+-----------+-----------------------------+
+
+  [5] negotiation_started  (queued by step)
+  +------------------+-----------+------------------------+
+  | event            | string    | "negotiation_started"  |
+  | step             | int       |                        |
+  | round            | int       | Always 2               |
+  +------------------+-----------+------------------------+
+
+  [6] agent_speech  (queued by step -- one per agent)
+  +------------------+-----------+-----------------------------+
+  | event            | string    | "agent_speech"              |
+  | step             | int       |                             |
+  | round            | int       | 2                           |
+  | agent            | string    | "House N"                   |
+  | message          | string    | Speech text                 |
+  +------------------+-----------+-----------------------------+
+
+  [7] step_complete  (queued by step)
+  +------------------+-----------+-----------------------------+
+  | event            | string    | "step_complete"             |
+  | step             | int       |                             |
+  +------------------+-----------+-----------------------------+
+  |                                                            |
+  |  ** ENRICHED BY BACKEND before sending to frontend **      |
+  |  Backend reads grid_results.jsonl, picks last row for      |
+  |  this step, and adds it as:                                |
+  |                                                            |
+  |  grid_data: {                                              |
+  |    step, round, gm, date, grid_ok,                         |
+  |    total_load_kw, max_line_loading_percent,                 |
+  |    max_voltage_drop_pu, overloaded_lines,                   |
+  |    overloaded_trafos, joint_action,                         |
+  |    per_agent: {                                             |
+  |      "House 1": {soc_pct, bus_voltage_pu, is_charging},    |
+  |      "House 2": {...}, ...                                  |
+  |    }                                                        |
+  |  }                                                          |
+  +-------------------------------------------------------------+
+
+  [8] simulation_complete  (held until all steps released)
+  +------------------+-----------+-----------------------------+
+  | event            | string    | "simulation_complete"       |
+  | run_id           | string    |                             |
+  +------------------+-----------+-----------------------------+
+
+
+  OTHER FILES WRITTEN BY SIMULATOR:
+  =================================
+
+  collective/grid_results.jsonl   (1-2 rows per step)
+  +---> Read by backend to enrich step_complete (see [7] above)
+  +---> Also served via REST: GET /api/games/{id}/step/{n}
+
+  per_agent/house_{N}.jsonl       (1-2 rows per step per agent)
+  +---> Read by backend, sent as player_step_data to individual players
+  |     Fields: step, round, gm, date, agent_id,
+  |             ev_state {connected, charging, soc_pct},
+  |             decision, decision_reasoning, negotiation_summary
+
+  status.json                     (updated in-place)
+  +---> Read by backend to detect unexpected termination
+  |     Fields: state, current_step, current_round, total_steps,
+  |             phase, sim_time, wall_clock_started, error
+
+  control.json                    (read by simulator, written by backend)
+  +---> Backend writes "pause"/"proceed"; simulator polls at step boundaries
+
+
+
+================================================================================
+  BACKEND --> FRONTEND : Socket.IO WebSocket events
+================================================================================
+
+  All events emitted to room = game_id (all clients in that game).
+  player_step_data emitted to room = "{game_id}:player:{house_num}".
+
+  The event names on Socket.IO match 1:1 with the simulator event names
+  (no translation needed).
+
+
+  STEP RELEASE SEQUENCE (on GM Step click):
+  ==========================================
+
+  GM clicks "Step" button
+       |
+       v
+  socket.emit('request_step', {game_id})
+       |
+       v
+  Backend: _release_step_events(game_id, next_step)
+       |
+       v  Events released with deliberate delays:
+       |
+       |   step_started .............. 0.3s delay
+       |   decisions_made (R1) ....... 1.0s delay
+       |   [if violation:]
+       |     grid_violation .......... 2.0s delay
+       |     negotiation_started ..... 0.3s delay
+       |     agent_speech (House 1) .. 1.5s delay
+       |     agent_speech (House 2) .. 1.5s delay
+       |     agent_speech (House N) .. 1.5s delay
+       |     decisions_made (R2) ..... 1.0s delay
+       |   step_complete ............. 0.3s delay (enriched with grid_data)
+       |
+       v
+  Backend: emit player_step_data to each player room
+
+
+
+================================================================================
+  FRONTEND : useSimEvents(socket) --> State Variables
+================================================================================
+
+  Socket Event          | State Variable Updated      | How
+  ----------------------+-----------------------------+------------------------
+  simulation_started    | simStatus = 'running'       |
+                        | totalSteps                  | data.total_steps
+                        | agentNames                  | data.agent_names
+                        | targetSoc                   | data.target_soc
+                        | timeLabels                  | data.time_labels
+                        | loadLimitKw                 | data.load_limit_kw
+  ----------------------+-----------------------------+------------------------
+  step_started          | currentStep                 | data.step
+                        | stepEvents                  | append(data)
+  ----------------------+-----------------------------+------------------------
+  decisions_made        | stepEvents                  | append(data)
+                        | pendingAgents = []          | clear typing indicators
+                        | negotiationActive = false   |
+  ----------------------+-----------------------------+------------------------
+  grid_violation        | stepEvents                  | append(data)
+                        | violatedLoads               | {[data.step]: data.total_load_kw}
+  ----------------------+-----------------------------+------------------------
+  negotiation_started   | stepEvents                  | append(data)
+                        | agentSpeeches = []          | clear previous round
+                        | negotiationActive = true    |
+                        | pendingAgents               | [...agentNamesRef.current]
+  ----------------------+-----------------------------+------------------------
+  agent_speech          | agentSpeeches               | append(data)
+                        | stepEvents                  | append(data)
+                        | pendingAgents               | remove(data.agent)
+  ----------------------+-----------------------------+------------------------
+  step_complete         | gridData                    | append(data.grid_data)
+                        | stepEvents                  | append(data)
+  ----------------------+-----------------------------+------------------------
+  player_step_data      | playerData                  | data.agent_data
+  ----------------------+-----------------------------+------------------------
+  simulation_complete   | simStatus = 'completed'     |
+  simulation_stopped    | simStatus = 'stopped'       |
+  simulation_error      | simStatus = 'error'         |
+
+
+
+================================================================================
+  FRONTEND : GameDashboardPage --> SimCharts props
+================================================================================
+
+  useSimEvents hook
+       |
+       |  Destructures:
+       |    currentStep, totalSteps, simStatus,
+       |    gridData, agentSpeeches, stepEvents,
+       |    pendingAgents, negotiationActive,
+       |    targetSoc, timeLabels, violatedLoads, loadLimitKw
+       |
+       +---> Right Panel Status (derived from gridData[-1]):
+       |       time:            gridData[-1].date
+       |       timeStep:        "{currentStep}/{totalSteps}"
+       |       gridConstrained: gridData[-1].grid_ok === false
+       |       networkLoad:     gridData[-1].total_load_kw + " kW"
+       |       status:          simStatus
+       |
+       +---> SimCharts (props):
+       |       gridData        --> chart data source
+       |       stepEvents      --> event log tab
+       |       formatEvent     --> event formatting function
+       |       targetSoc       --> SOC chart dashed target lines
+       |       timeLabels      --> X-axis labels
+       |       totalSteps      --> pre-fill X-axis slots
+       |       violatedLoads   --> violated load X markers + bands
+       |       loadLimitKw     --> load chart threshold line
+       |
+       +---> Negotiation Panel:
+       |       agentSpeeches   --> chat bubbles (agent, message, step, round)
+       |       pendingAgents   --> typing indicators
+       |       negotiationActive --> auto-open panel
+       |
+       +---> Status Banner:
+               simStatus       --> "RUNNING"/"COMPLETED"/"STOPPED"
+               negotiationActive --> "NEGOTIATION"/"OPERATION" badge
+               currentStep     --> "Step N / M"
+
+
+
+================================================================================
+  FRONTEND : SimCharts data transformation (useMemo)
+================================================================================
+
+  INPUTS: gridData, timeLabels, totalSteps, violatedLoads
+
+  STEP 1: Build X-axis labels (allLabels)
+  +--------------------------------------------------------------------+
+  | For s = 1..totalSteps:                                             |
+  |   if timeLabels[s-1] exists:                                       |
+  |     label = timeLabels[s-1].split(' ')[1]   // "21:00", "21:30"   |
+  |   else:                                                            |
+  |     label = "S{s}"                                                 |
+  +--------------------------------------------------------------------+
+
+  STEP 2: Extract agent names from first gridData entry
+  +--------------------------------------------------------------------+
+  | agentNames = Object.keys(gridData[0].per_agent)                    |
+  | // e.g. ["House 1", "House 2", "House 3", "House 4"]              |
+  +--------------------------------------------------------------------+
+
+  STEP 3: Build chart rows (one per step, pre-filled with nulls)
+  +--------------------------------------------------------------------+
+  | For each step 1..totalSteps:                                       |
+  |                                                                    |
+  |   If gridData has entry for this step:                             |
+  |     row.label            = allLabels[step-1]                       |
+  |     row.step             = step                                    |
+  |     row.grid_ok          = gd.grid_ok                              |
+  |     row.total_load_kw    = gd.total_load_kw                        |
+  |     row.min_voltage_pu   = Math.min(...per_agent[*].bus_voltage_pu)|
+  |     row.{name}_soc       = per_agent[name].soc_pct                 |
+  |     row.{name}_charging  = per_agent[name].is_charging             |
+  |   Else (future step, no data yet):                                 |
+  |     row.total_load_kw    = null                                    |
+  |     row.min_voltage_pu   = null                                    |
+  |     row.{name}_soc       = null                                    |
+  |     row.{name}_charging  = null                                    |
+  |                                                                    |
+  |   row.violated_load_kw   = violatedLoads[step] ?? null             |
+  +--------------------------------------------------------------------+
+
+
+  OUTPUT chartData rows:
+  +-------------------------------------------------------------------+
+  | {                                                                 |
+  |   label:             "21:30"                                      |
+  |   step:              2                                            |
+  |   grid_ok:           true                                         |
+  |   total_load_kw:     40                                           |
+  |   min_voltage_pu:    0.955                                        |
+  |   "House 1_soc":     30.0                                         |
+  |   "House 1_charging": true                                        |
+  |   "House 2_soc":     28.5                                         |
+  |   "House 2_charging": true                                        |
+  |   ...                                                             |
+  |   violated_load_kw:  40      // or null if no violation           |
+  | }                                                                 |
+  +-------------------------------------------------------------------+
+
+
+
+================================================================================
+  CHARTS : What each chart reads from chartData
+================================================================================
+
+  SOC CHART (EV State of Charge)
+  +-------------------------------------------------------------------+
+  |  X-axis:   row.label                                              |
+  |  Y-axis:   0-100 (SOC %)                                         |
+  |  Lines:    One per agent, dataKey = "{name}_soc"                  |
+  |  Dots:     ChargingDot checks row["{name}_charging"]              |
+  |            - filled circle if charging                             |
+  |            - hollow circle if idle                                 |
+  |  Ref:      Dashed horizontal line per agent at targetSoc[name]    |
+  +-------------------------------------------------------------------+
+
+  VOLTAGE CHART (Grid Voltage)
+  +-------------------------------------------------------------------+
+  |  X-axis:   row.label                                              |
+  |  Y-axis:   0.90-1.05 (per unit)                                  |
+  |  Line:     Single line, dataKey = "min_voltage_pu"                |
+  |  Ref:      Dashed red line at y=0.94 (threshold)                  |
+  |  Bands:    Red ReferenceArea where violated_load_kw != null       |
+  +-------------------------------------------------------------------+
+
+  LOAD CHART (Total Grid Load)
+  +-------------------------------------------------------------------+
+  |  X-axis:   row.label                                              |
+  |  Y-axis:   auto (kW)                                              |
+  |  Line 1:   Copper solid, dataKey = "total_load_kw" (resolved)     |
+  |  Line 2:   Grey dashed, dataKey = "violated_load_kw" (violated)   |
+  |  Dots:     ViolatedLoadDot draws X where violated_load_kw != null |
+  |  Ref:      Dashed red line at y=loadLimitKw (threshold)           |
+  |  Bands:    Red ReferenceArea where violated_load_kw != null       |
+  +-------------------------------------------------------------------+
+
+
+
+================================================================================
+  STEP-BY-STEP TIMELINE (Example: Step 3 with violation)
+================================================================================
+
+  SIMULATOR                    BACKEND                     FRONTEND
+  =========                    =======                     ========
+
+  _run_step(3)
+    |
+    +-- emit step_started ---> events.jsonl
+    |     {step:3,              _watch_events
+    |      sim_time:"22:00"}    queues in
+    |                           step_events_queue[3]
+    |
+    +-- _decide(3)
+    |   all 4 houses: Yes
+    |   load = 40 kW > 30
+    |   grid_ok = false
+    |
+    +-- _write_round_data ----> grid_results.jsonl
+    |     (step=3, round=1,       {grid_ok:false,
+    |      grid_ok=false)          total_load_kw:40,
+    |                              per_agent:{...}}
+    |
+    +-- emit decisions_made --> events.jsonl
+    |     {step:3, round:1,     queued
+    |      grid_ok:false,
+    |      total_load_kw:40}
+    |
+    +-- emit grid_violation --> events.jsonl
+    |     {step:3,              queued
+    |      total_load_kw:40,
+    |      load_limit_kw:30}
+    |
+    +-- emit negotiation_    -> events.jsonl
+    |     started {step:3}      queued
+    |
+    +-- emit agent_speech ----> events.jsonl
+    |     {step:3, agent:       queued (x N houses)
+    |      "House 1", message}
+    |     ... (repeat per house)
+    |
+    +-- negotiated: H4 defers
+    |
+    +-- _write_round_data ----> grid_results.jsonl
+    |     (step=3, round=2,       {grid_ok:true,
+    |      grid_ok=True)           total_load_kw:30,
+    |                              per_agent:{...}}
+    |
+    +-- _apply_charging
+    |     (H1,H2,H3 charge)
+    |
+    +-- emit decisions_made --> events.jsonl
+    |     {step:3, round:2,     queued
+    |      grid_ok:true,
+    |      total_load_kw:30}
+    |
+    +-- emit step_complete ---> events.jsonl
+          {step:3}              queued
+                                                    [GM clicks Step]
+                                _release_step_events(3)
+                                  |
+                                  +-- emit step_started ----> currentStep=3
+                                  |     (0.3s delay)           stepEvents.push
+                                  |
+                                  +-- emit decisions_made --> stepEvents.push
+                                  |     round 1 (1.0s)        pendingAgents=[]
+                                  |                            negotiationActive=false
+                                  |
+                                  +-- emit grid_violation --> stepEvents.push
+                                  |     (2.0s delay)           violatedLoads[3]=40
+                                  |
+                                  +-- emit negotiation_ ----> stepEvents.push
+                                  |     started (0.3s)         agentSpeeches=[]
+                                  |                            negotiationActive=true
+                                  |                            pendingAgents=[all]
+                                  |                            ** panel auto-opens **
+                                  |
+                                  +-- emit agent_speech ----> agentSpeeches.push
+                                  |     House 1 (1.5s)         pendingAgents.remove("H1")
+                                  +-- emit agent_speech ----> agentSpeeches.push
+                                  |     House 2 (1.5s)         pendingAgents.remove("H2")
+                                  |     ... etc
+                                  |
+                                  +-- emit decisions_made --> stepEvents.push
+                                  |     round 2 (1.0s)        pendingAgents=[]
+                                  |                            negotiationActive=false
+                                  |
+                                  +-- ENRICH step_complete:
+                                  |     read grid_results.jsonl
+                                  |     step_grid[-1] = round 2 row
+                                  |     event.grid_data = {
+                                  |       grid_ok: true,
+                                  |       total_load_kw: 30,
+                                  |       per_agent: {
+                                  |         "House 1": {
+                                  |           soc_pct: 30.0,
+                                  |           bus_voltage_pu: 0.977,
+                                  |           is_charging: true
+                                  |         }, ...
+                                  |       }
+                                  |     }
+                                  +-- emit step_complete ----> gridData.push(grid_data)
+                                  |                            stepEvents.push
+                                  |                            ** charts update **
+                                  |                            ** status updates:
+                                  |                              time = "22:00"
+                                  |                              gridConstrained = false
+                                  |                              networkLoad = "30.0 kW"
+                                  |
+                                  +-- emit player_step_data -> playerData (per player)
+                                       to each player room
+
+
+
+================================================================================
+  CONDITION MAP: When does each thing happen?
+================================================================================
+
+  Violation occurs when:
+    round1_load > load_limit_kw
+    (i.e. sum of charger_kw for all charging houses > 30)
+
+  Car is connected when:
+    sim_time(step) > connect_time[house]  OR  sim_time(step).hour < 7
+    (strict > means no charging in the exact arrival step)
+
+  House decides to charge when:
+    soc[house] < target_soc_pct  AND  is_connected(house, step)
+
+  Negotiation defers the last house:
+    last = max(household_numbers)
+    negotiated[last] = False
+
+  Negotiation panel auto-opens when:
+    negotiationActive transitions from false to true
+
+  Chart violation bands appear when:
+    chartData[step].violated_load_kw != null
+
+  Chart dot is filled when:
+    chartData[step]["{name}_charging"] == true
+
+  Grid constrained shows "True" when:
+    gridData[-1].grid_ok === false
+
+  Save button enabled when:
+    simStatus === 'stopped' OR simStatus === 'completed'
+
+  Step button enabled when:
+    simStatus === 'running'
+
+  Stop button enabled when:
+    simStatus is NOT 'stopped' AND NOT 'completed'

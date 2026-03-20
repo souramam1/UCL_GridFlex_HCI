@@ -6,8 +6,20 @@ Reads an input YAML file and writes simulation output files incrementally,
 mimicking the behavior of the real Concordia-based simulation.
 
 Usage:
-    python mock_simulator.py --input <path>.yaml --output <output_dir> \
+    python mock_simulator.py --input <path>.yaml --run-dir <run_dir> \
         [--delay 1.5] [--scenario clean|negotiation]
+
+Run directory layout (created by this simulator):
+    <run_dir>/
+        control/            <-- handshake files
+            events.jsonl
+            control.json
+            status.json
+            initial_state.json
+        output/             <-- simulation results
+            collective/grid_results.jsonl
+            per_agent/house_N.jsonl
+            summary/network_stats.json
 """
 
 import argparse
@@ -38,9 +50,9 @@ def append_jsonl(path, data):
         f.write(json.dumps(data) + "\n")
 
 
-def read_control(output_dir):
-    """Read the command from control.json (if it exists)."""
-    control_path = output_dir / "control.json"
+def read_control(run_dir):
+    """Read the command from control/control.json (if it exists)."""
+    control_path = run_dir / "control" / "control.json"
     if not control_path.exists():
         return None
     try:
@@ -50,9 +62,9 @@ def read_control(output_dir):
         return None
 
 
-def update_status(output_dir, **kwargs):
-    """Merge kwargs into status.json."""
-    status_path = output_dir / "status.json"
+def update_status(run_dir, **kwargs):
+    """Merge kwargs into control/status.json."""
+    status_path = run_dir / "control" / "status.json"
     status = {}
     if status_path.exists():
         try:
@@ -95,12 +107,14 @@ NEGOTIATION_TEMPLATES_DEFAULT = [
 class MockSimulator:
     """
     Reads input YAML, produces output files matching the real simulation format.
-    Supports clean (no violations) and negotiation (violations at steps 3, 6).
+    Supports clean (no violations) and negotiation (dynamic load-based violations).
     """
 
-    def __init__(self, config, output_dir, delay, scenario):
+    def __init__(self, config, run_dir, delay, scenario):
         self.config = config
-        self.output_dir = Path(output_dir)
+        self.run_dir = Path(run_dir)
+        self.control_dir = self.run_dir / "control"
+        self.output_dir = self.run_dir / "output"
         self.delay = delay
         self.scenario = scenario
         self.total_steps = 8
@@ -140,16 +154,26 @@ class MockSimulator:
             for num, h in self.households.items()
         }
 
-        # Parse car connection time (car returns at car_away_until)
-        self.connect_hour = {}
+        # Parse car connection time as a full datetime on the start date.
+        # Using strict > comparison means a car arriving at 21:00 is NOT
+        # charging at step 1 (21:00) but starts at step 2 (21:30).
+        self.connect_time = {}
         for num, h in self.households.items():
             away_until = h.get("car_away_until", "21:00")
-            self.connect_hour[num] = int(away_until.split(":")[0])
+            parts = away_until.split(":")
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
+            self.connect_time[num] = self.start_time.replace(
+                hour=hour, minute=minute,
+            )
 
         # Grid load limit (kW) — violations when total load exceeds this.
-        # With 4 houses × 10 kW chargers, 3+ charging = 30 kW → violation.
-        # Threshold at 25 kW means 2 houses OK, 3+ triggers negotiation.
-        self.load_limit_kw = 25 if scenario == "negotiation" else 9999
+        # With 4 houses × 10 kW chargers, all 4 charging = 40 kW.
+        # Threshold at 30 kW: deferring 1 house brings load to 30 ≤ 30.
+        self.load_limit_kw = 30 if scenario == "negotiation" else 9999
+
+        # Track number of violation steps for the summary
+        self.violation_count = 0
 
     def name(self, num):
         return f"House {num}"
@@ -162,14 +186,19 @@ class MockSimulator:
         return self.sim_time(step).strftime("%Y-%m-%d %H:%M")
 
     def is_connected(self, house_num, step):
-        """Is the car home (connected) at this step?"""
-        hour = self.sim_time(step).hour
-        return hour >= self.connect_hour[house_num] or hour < 7
+        """Is the car home (connected) at this step?
+
+        Uses strict '>' so the car isn't charging in the exact step it
+        arrives (simulates plug-in delay).  Once past midnight the car
+        is always home (early-morning hours).
+        """
+        sim_dt = self.sim_time(step)
+        return sim_dt > self.connect_time[house_num] or sim_dt.hour < 7
 
     def emit(self, event_data):
-        """Append an event to events.jsonl."""
+        """Append an event to control/events.jsonl."""
         event_data["timestamp"] = datetime.now().isoformat()
-        append_jsonl(self.output_dir / "events.jsonl", event_data)
+        append_jsonl(self.control_dir / "events.jsonl", event_data)
 
     # -- Main loop --
 
@@ -203,7 +232,7 @@ class MockSimulator:
             time.sleep(self.delay)
 
         self._write_summary()
-        update_status(self.output_dir, state="completed")
+        update_status(self.run_dir, state="completed")
         self.emit({
             "event": "simulation_complete",
             "run_id": self.config.get("run_id", "unknown"),
@@ -216,7 +245,7 @@ class MockSimulator:
 
         self.emit({"event": "step_started", "step": step, "sim_time": sim_time})
         update_status(
-            self.output_dir,
+            self.run_dir,
             current_step=step, current_round=1,
             phase="operation", sim_time=sim_time,
         )
@@ -249,6 +278,7 @@ class MockSimulator:
         if grid_ok:
             self._apply_charging(charging)
         else:
+            self.violation_count += 1
             time.sleep(self.delay * 0.5)
 
             self.emit({
@@ -263,7 +293,7 @@ class MockSimulator:
             })
 
             time.sleep(self.delay * 0.5)
-            update_status(self.output_dir, current_round=2, phase="negotiation")
+            update_status(self.run_dir, current_round=2, phase="negotiation")
             self.emit({"event": "negotiation_started", "step": step, "round": 2})
 
             for house_num, message in self._speeches(step):
@@ -347,8 +377,8 @@ class MockSimulator:
                           decisions, charging, negotiation=False):
         total_load = sum(self.charger_kw[n] for n, c in charging.items() if c)
 
-        # Voltage drop: tuned so violated load (~30 kW) gives min voltage
-        # near 0.94 threshold; resolved load (~20 kW) stays above it
+        # Voltage drop: tuned so violated load (~40 kW) gives min voltage
+        # near 0.94 threshold; resolved load (~30 kW) stays above it
         base_drop = total_load * 0.0015
         # Line loading percentage relative to the load limit
         max_line = (total_load / self.load_limit_kw * 100) if self.load_limit_kw > 0 else 0
@@ -463,7 +493,7 @@ class MockSimulator:
                 "car_away_until": h.get("car_away_until", "21:00"),
                 "cooperative": h.get("cooperative", True),
             }
-        write_json(self.output_dir / "initial_state.json", {
+        write_json(self.control_dir / "initial_state.json", {
             "agents": agents,
             "grid": {
                 "total_load_kw": 0,
@@ -474,14 +504,14 @@ class MockSimulator:
 
     def _write_initial_status(self):
         update_status(
-            self.output_dir,
+            self.run_dir,
             state="running", current_step=1, current_round=1,
             total_steps=self.total_steps, phase="operation",
             sim_time=self.sim_time_str(1),
             wall_clock_started=datetime.now().isoformat(),
             error=None,
         )
-        write_json(self.output_dir / "control.json", {"command": ""})
+        write_json(self.control_dir / "control.json", {"command": ""})
 
     def _write_summary(self):
         agent_objectives = {}
@@ -500,25 +530,26 @@ class MockSimulator:
             "agent_objectives": agent_objectives,
             "grid_stats": {
                 "total_steps": self.total_steps,
-                "grid_violations": len(self.negotiation_steps),
-                "negotiation_rounds": len(self.negotiation_steps),
+                "grid_violations": self.violation_count,
+                "negotiation_rounds": self.violation_count,
             },
         })
 
     def _setup_dirs(self):
+        self.control_dir.mkdir(parents=True, exist_ok=True)
         (self.output_dir / "collective").mkdir(parents=True, exist_ok=True)
         (self.output_dir / "per_agent").mkdir(parents=True, exist_ok=True)
         (self.output_dir / "summary").mkdir(parents=True, exist_ok=True)
 
     def _poll_control(self):
-        """Block while control.json says pause."""
+        """Block while control/control.json says pause."""
         while True:
-            cmd = read_control(self.output_dir)
+            cmd = read_control(self.run_dir)
             if cmd == "pause":
-                update_status(self.output_dir, state="paused")
+                update_status(self.run_dir, state="paused")
                 time.sleep(0.5)
             else:
-                update_status(self.output_dir, state="running")
+                update_status(self.run_dir, state="running")
                 break
 
 
@@ -530,8 +561,8 @@ def main():
     parser = argparse.ArgumentParser(description="GridFlex Mock Simulator")
     parser.add_argument("--input", required=True,
                         help="Path to input YAML file")
-    parser.add_argument("--output", required=True,
-                        help="Path to output directory")
+    parser.add_argument("--run-dir", required=True,
+                        help="Path to run directory (contains control/ and output/)")
     parser.add_argument("--delay", type=float, default=1.5,
                         help="Delay in seconds between steps (default: 1.5)")
     parser.add_argument("--scenario",
@@ -542,11 +573,11 @@ def main():
     with open(args.input) as f:
         config = yaml.safe_load(f)
 
-    sim = MockSimulator(config, args.output, args.delay, args.scenario)
+    sim = MockSimulator(config, args.run_dir, args.delay, args.scenario)
 
     print(f"Mock simulator starting: scenario={args.scenario}, delay={args.delay}s")
     print(f"  Input:      {args.input}")
-    print(f"  Output:     {args.output}")
+    print(f"  Run dir:    {args.run_dir}")
     print(f"  Households: {sim.num_houses}")
 
     try:
@@ -554,11 +585,11 @@ def main():
         print("Simulation completed successfully.")
     except KeyboardInterrupt:
         print("Simulation interrupted.")
-        update_status(Path(args.output), state="error",
+        update_status(Path(args.run_dir), state="error",
                       error="Interrupted by user")
     except Exception as e:
         print(f"Simulation error: {e}")
-        update_status(Path(args.output), state="error", error=str(e))
+        update_status(Path(args.run_dir), state="error", error=str(e))
         raise
 
 
