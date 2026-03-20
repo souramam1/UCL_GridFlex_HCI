@@ -6,7 +6,7 @@
 
                         INPUT YAML (written by backend before launch)
                         =============================================
-                        simulation/input/<run_id>.yaml
+                        simulation/runs/<run_id>/input/<run_id>.yaml
 
   Backend writes:       run_id, scenario {id, name}, players: N
   (file_manager.py)     households:
@@ -24,9 +24,9 @@
                         CLI LAUNCH
                         ==========
   Backend runs:         python mock_simulator.py
-                          --input  <yaml_path>
-                          --output <output_dir>
-                          --delay  1.5
+                          --input    <yaml_path>
+                          --run-dir  <run_dir>
+                          --delay    1.5
                           --scenario negotiation
 
 
@@ -147,23 +147,31 @@
   OTHER FILES WRITTEN BY SIMULATOR:
   =================================
 
-  collective/grid_results.jsonl   (1-2 rows per step)
+  Run directory: simulation/runs/<run_id>/
+
+  control/events.jsonl              (append-only event stream — see above)
+  control/status.json               (updated in-place)
+  +---> Read by backend to detect unexpected termination
+  |     Fields: state, current_step, current_round, total_steps,
+  |             phase, sim_time, wall_clock_started, error
+
+  control/control.json              (read by simulator, written by backend)
+  +---> Backend writes "pause"/"proceed"; simulator polls at step boundaries
+
+  control/initial_state.json        (written once at startup)
+  +---> Initial agent + grid state for frontend pre-step display
+
+  output/collective/grid_results.jsonl   (1-2 rows per step)
   +---> Read by backend to enrich step_complete (see [7] above)
   +---> Also served via REST: GET /api/games/{id}/step/{n}
 
-  per_agent/house_{N}.jsonl       (1-2 rows per step per agent)
+  output/per_agent/house_{N}.jsonl       (1-2 rows per step per agent)
   +---> Read by backend, sent as player_step_data to individual players
   |     Fields: step, round, gm, date, agent_id,
   |             ev_state {connected, charging, soc_pct},
   |             decision, decision_reasoning, negotiation_summary
 
-  status.json                     (updated in-place)
-  +---> Read by backend to detect unexpected termination
-  |     Fields: state, current_step, current_round, total_steps,
-  |             phase, sim_time, wall_clock_started, error
-
-  control.json                    (read by simulator, written by backend)
-  +---> Backend writes "pause"/"proceed"; simulator polls at step boundaries
+  output/summary/network_stats.json      (written once at end)
 
 
 

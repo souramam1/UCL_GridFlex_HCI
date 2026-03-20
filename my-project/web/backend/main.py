@@ -4,7 +4,7 @@ Main backend server — FastAPI for REST endpoints, Socket.IO for live updates.
 The simulation is treated as a separate system. This server communicates with it
 only through the filesystem via file_manager.py:
   - Writes player inputs to simulation/input/
-  - Reads simulation results from simulation/output/runs/
+  - Reads simulation results from simulation/runs/<run_id>/
 
 Run with: uvicorn main:app --reload --host 0.0.0.0 --port 8000
 """
