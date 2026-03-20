@@ -115,11 +115,24 @@ class MockSimulator:
 
         self.num_houses = len(self.households)
 
-        # Derive charger power from battery size (not a player input)
-        self.charger_kw = {}
-        for num, h in self.households.items():
-            battery = h.get("ev_battery_kwh", 35)
-            self.charger_kw[num] = 7 if battery >= 50 else 3
+        # Fixed charger power per house (matches real Concordia ~10 kW)
+        self.charger_kw = {num: 10 for num in self.households}
+
+        # Per-house charge efficiency multiplier (creates SOC divergence)
+        sorted_nums = sorted(self.households)
+        charge_mults = [1.0, 0.85, 1.1, 0.95, 0.90, 1.05]
+        self.charge_mult = {
+            num: charge_mults[i % len(charge_mults)]
+            for i, num in enumerate(sorted_nums)
+        }
+
+        # Network position factors — houses further from transformer
+        # experience larger voltage drops (mimics real power flow topology)
+        pos_factors = [0.0, 0.35, 0.65, 1.0, 0.50, 0.15]
+        self.net_position = {
+            num: pos_factors[i % len(pos_factors)]
+            for i, num in enumerate(sorted_nums)
+        }
 
         # Track state of charge per house
         self.soc = {
@@ -133,14 +146,17 @@ class MockSimulator:
             away_until = h.get("car_away_until", "21:00")
             self.connect_hour[num] = int(away_until.split(":")[0])
 
-        # Steps that trigger grid violations (negotiation scenario only)
-        self.negotiation_steps = {3, 6} if scenario == "negotiation" else set()
+        # Grid load limit (kW) — violations when total load exceeds this.
+        # With 4 houses × 10 kW chargers, 3+ charging = 30 kW → violation.
+        # Threshold at 25 kW means 2 houses OK, 3+ triggers negotiation.
+        self.load_limit_kw = 25 if scenario == "negotiation" else 9999
 
     def name(self, num):
         return f"House {num}"
 
     def sim_time(self, step):
-        return self.start_time + timedelta(hours=step * self.time_step_hours)
+        # step is 1-based, so step 1 → offset 0
+        return self.start_time + timedelta(hours=(step - 1) * self.time_step_hours)
 
     def sim_time_str(self, step):
         return self.sim_time(step).strftime("%Y-%m-%d %H:%M")
@@ -162,14 +178,26 @@ class MockSimulator:
         self._write_initial_state()
         self._write_initial_status()
 
+        sorted_houses = sorted(self.households)
         self.emit({
             "event": "simulation_started",
             "run_id": self.config.get("run_id", "unknown"),
             "total_steps": self.total_steps,
-            "agent_names": [self.name(n) for n in sorted(self.households)],
+            "agent_names": [self.name(n) for n in sorted_houses],
+            # Per-agent target SOC so the dashboard can draw goal lines
+            "target_soc": {
+                self.name(n): self.households[n].get("target_soc_pct", 80)
+                for n in sorted_houses
+            },
+            # Pre-computed time labels for all steps (fixed X-axis)
+            "time_labels": [
+                self.sim_time_str(s) for s in range(1, self.total_steps + 1)
+            ],
+            # Grid load limit so the chart can draw a threshold line
+            "load_limit_kw": self.load_limit_kw,
         })
 
-        for step in range(self.total_steps):
+        for step in range(1, self.total_steps + 1):
             self._poll_control()
             self._run_step(step)
             time.sleep(self.delay)
@@ -194,19 +222,24 @@ class MockSimulator:
         )
 
         decisions = self._decide(step)
-        needs_negotiation = step in self.negotiation_steps
-        grid_ok = not needs_negotiation
 
         charging = {
             n: (decisions[n] and self.is_connected(n, step))
             for n in self.households
         }
 
+        # Compute round 1 load and determine violation dynamically
+        round1_load = sum(
+            self.charger_kw[n] for n, c in charging.items() if c
+        )
+        grid_ok = round1_load <= self.load_limit_kw
+
         self._write_round_data(step, 1, sim_time, grid_ok, decisions, charging)
 
         self.emit({
             "event": "decisions_made",
             "step": step, "round": 1, "grid_ok": grid_ok,
+            "total_load_kw": round1_load,
             "decisions": {
                 self.name(n): ("Yes" if d else "No")
                 for n, d in decisions.items()
@@ -218,14 +251,14 @@ class MockSimulator:
         else:
             time.sleep(self.delay * 0.5)
 
-            total_load = sum(
-                self.charger_kw[n] for n, c in charging.items() if c
-            )
             self.emit({
                 "event": "grid_violation",
                 "step": step, "round": 1,
-                "total_load_kw": total_load,
-                "max_line_loading_percent": 112.3,
+                "total_load_kw": round1_load,
+                "load_limit_kw": self.load_limit_kw,
+                "max_line_loading_percent": round(
+                    round1_load / self.load_limit_kw * 100, 1
+                ),
                 "overloaded_lines": ["line_11"],
             })
 
@@ -259,9 +292,14 @@ class MockSimulator:
             )
             self._apply_charging(neg_charging)
 
+            round2_load = sum(
+                self.charger_kw[n] for n, c in neg_charging.items() if c
+            )
+
             self.emit({
                 "event": "decisions_made",
                 "step": step, "round": 2, "grid_ok": True,
+                "total_load_kw": round2_load,
                 "decisions": {
                     self.name(n): ("Yes" if d else "No")
                     for n, d in negotiated.items()
@@ -286,9 +324,11 @@ class MockSimulator:
             if is_charging:
                 energy = self.charger_kw[num] * self.time_step_hours
                 battery = self.households[num].get("ev_battery_kwh", 35)
+                # Apply per-house charge multiplier for SOC divergence
+                mult = self.charge_mult.get(num, 1.0)
                 self.soc[num] = min(
                     100.0,
-                    self.soc[num] + (energy / battery * 100),
+                    self.soc[num] + (energy / battery * 100) * mult,
                 )
 
     def _speeches(self, step):
@@ -306,14 +346,24 @@ class MockSimulator:
     def _write_round_data(self, step, round_num, sim_time, grid_ok,
                           decisions, charging, negotiation=False):
         total_load = sum(self.charger_kw[n] for n, c in charging.items() if c)
-        max_line = total_load * 0.55
-        max_vdrop = total_load * 0.00073
+
+        # Voltage drop: tuned so violated load (~30 kW) gives min voltage
+        # near 0.94 threshold; resolved load (~20 kW) stays above it
+        base_drop = total_load * 0.0015
+        # Line loading percentage relative to the load limit
+        max_line = (total_load / self.load_limit_kw * 100) if self.load_limit_kw > 0 else 0
+        max_vdrop = base_drop
 
         per_agent_grid = {}
         for num in sorted(self.households):
+            # Per-house voltage varies by network position
+            # House at position 1.0 (furthest) gets full drop
+            # House at position 0.0 (nearest) gets ~50% of the drop
+            pos = self.net_position.get(num, 0.5)
+            house_drop = base_drop * (0.5 + 0.5 * pos)
             per_agent_grid[self.name(num)] = {
                 "soc_pct": round(self.soc[num], 2),
-                "bus_voltage_pu": round(1.0 - total_load * 0.00073, 6),
+                "bus_voltage_pu": round(1.0 - house_drop, 6),
                 "is_charging": charging[num],
             }
 
@@ -425,9 +475,9 @@ class MockSimulator:
     def _write_initial_status(self):
         update_status(
             self.output_dir,
-            state="running", current_step=0, current_round=1,
+            state="running", current_step=1, current_round=1,
             total_steps=self.total_steps, phase="operation",
-            sim_time=self.sim_time_str(0),
+            sim_time=self.sim_time_str(1),
             wall_clock_started=datetime.now().isoformat(),
             error=None,
         )

@@ -1,0 +1,155 @@
+/* ============================================
+   SIM CHARTS — Container & Tabs
+   ============================================ */
+
+.sim-charts {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sim-charts__tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.sim-charts__tab {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-regular);
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.sim-charts__tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sim-charts__tab--active {
+  color: var(--color-copper);
+  border-bottom-color: var(--color-copper);
+}
+
+/* ============================================
+   SIM CHARTS — Content area
+   ============================================ */
+
+.sim-charts__content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 2rem;
+}
+
+/* ============================================
+   SIM CHARTS — Chart cards
+   ============================================ */
+
+.sim-charts__card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sim-charts__card h3 {
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-regular);
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.75rem;
+}
+
+.sim-charts__legend-note {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* ============================================
+   SIM CHARTS — Empty state
+   ============================================ */
+
+.sim-charts__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+}
+
+/* ============================================
+   SIM CHARTS — Event Log (tab 2)
+   ============================================ */
+
+.sim-charts__event-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sim-charts__event-entry {
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sim-charts__event-entry--violation {
+  background: rgba(204, 68, 68, 0.12);
+  color: #c44;
+}
+
+.sim-charts__event-entry--speech {
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+/* ============================================
+   SIM CHARTS — Violation band pulsation
+   ============================================ */
+
+/* Pulse 3 times then hold at resting opacity (violation resolved within step) */
+.sim-charts__violation-band {
+  animation: violation-pulse 0.8s ease-in-out 3 forwards;
+}
+
+@keyframes violation-pulse {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* ============================================
+   SIM CHARTS — Recharts overrides
+   ============================================ */
+
+/* Make legend text lighter on dark bg */
+.sim-charts .recharts-legend-item-text {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 11px;
+}
+
+/* Tooltip cursor line */
+.sim-charts .recharts-tooltip-cursor {
+  stroke: rgba(255, 255, 255, 0.15);
+}

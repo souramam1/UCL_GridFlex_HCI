@@ -6,46 +6,69 @@
    that expands UPWARD and is draggable to resize.
    ============================================ */
 
-/* --- Charts Area (scrollable) --- */
+/* --- Charts Area (scrollable, contains SimCharts component) --- */
 
 .dashboard__charts {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  padding: 0 1.5rem;
   padding-bottom: 4rem; /* space so content isn't hidden behind fixed bar */
 }
 
-.dashboard__chart-section {
-  width: 100%;
-  max-width: 75%;
-  margin-bottom: 2.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+/* --- Status Banner (top of left panel) --- */
 
-.dashboard__chart-heading {
-  font-family: var(--font-primary);
-  font-size: 1.2rem;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.dashboard__chart-placeholder {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  background: #3a3a3a;
-  border: none;
+.dashboard__status-banner {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 1rem;
+  padding: 0.75rem 2rem;
   font-family: var(--font-primary);
+}
+
+.dashboard__sim-status {
   font-size: 0.75rem;
-  color: #aaa;
+  font-weight: var(--font-weight-bold);
+  padding: 0.25rem 0.6rem;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background-color: #666;
+}
+
+.dashboard__sim-status--waiting {
+  background-color: #888;
+}
+
+.dashboard__sim-status--running {
+  background-color: #4a8;
+}
+
+.dashboard__sim-status--completed {
+  background-color: var(--color-copper);
+}
+
+.dashboard__sim-status--stopped {
+  background-color: #c44;
+}
+
+.dashboard__sim-status--error {
+  background-color: #c44;
+}
+
+.dashboard__sim-status--operation {
+  background-color: #4a8;
+}
+
+.dashboard__sim-status--negotiation {
+  background-color: var(--color-copper);
+}
+
+.dashboard__step-label {
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
 }
 
 /* --- Right Panel Status Info --- */
@@ -67,7 +90,7 @@
   line-height: 1.6;
 }
 
-/* --- Right Panel Actions (Stop + Step) --- */
+/* --- Right Panel Actions (Save + Stop + Step) --- */
 
 .dashboard__actions {
   display: flex;
@@ -107,6 +130,11 @@
 
 .dashboard__negotiation-toggle:hover {
   background-color: #b8774e;
+}
+
+.dashboard__speech-count {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
 /* --- Drag Handle --- */
@@ -198,19 +226,93 @@
   font-weight: var(--font-weight-regular);
 }
 
+.dashboard__chat-meta {
+  font-size: 0.65rem;
+  opacity: 0.7;
+  font-weight: var(--font-weight-regular);
+}
+
+.dashboard__chat-empty {
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 1rem 0;
+  text-align: center;
+}
+
+/* --- Typing Indicator Bubble --- */
+
+.dashboard__chat-bubble--typing {
+  align-self: flex-start;
+  background-color: rgba(0, 0, 0, 0.3);
+  max-width: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dashboard__typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0;
+}
+
+.dashboard__typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.7);
+  animation: dashboard-typing-bounce 1.4s ease-in-out infinite;
+}
+
+.dashboard__typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dashboard__typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dashboard-typing-bounce {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+/* --- Shutdown Countdown Overlay --- */
+
+.dashboard__shutdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.dashboard__shutdown-text {
+  font-family: var(--font-primary);
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-medium);
+  color: #fff;
+  text-align: center;
+}
+
 /* ============================================
    GAME DASHBOARD PAGE - Responsive
    ============================================ */
 
 @media (max-width: 768px) {
-  .dashboard__chart-heading {
-    font-size: 1rem;
-  }
-
-  .dashboard__chart-section {
-    max-width: 100%;
-  }
-
   .dashboard__status-info {
     position: relative;
     top: auto;

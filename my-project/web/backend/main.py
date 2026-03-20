@@ -373,13 +373,19 @@ async def _launch_simulation(game_id: str, run_id: str, scenario: dict,
     )
 
     # Track this simulation in memory
+    # current_step starts at 0 so first Step click releases step 1
+    # (mock simulator uses 1-based step numbers)
     active_simulations[game_id] = {
         "process": proc,
         "run_id": run_id,
         "last_event_line": 0,
-        "current_step": -1,
+        "current_step": 0,
         "step_events_queue": {},
         "mode": "playback",
+        "sim_finished": False,
+        "total_steps": 8,
+        "completion_event": None,
+        "releasing": False,
     }
 
     # Start watching events in the background
@@ -389,7 +395,8 @@ async def _launch_simulation(game_id: str, run_id: str, scenario: dict,
 async def _watch_events(game_id: str):
     """
     Poll events.jsonl every 0.5s for new lines.
-    Queue events by step. In playback mode, auto-release step 0 immediately.
+    Queue step events — they are only released when the GM clicks Step.
+    simulation_complete is held until the GM has stepped through all steps.
     """
     sim = active_simulations.get(game_id)
     if not sim:
@@ -405,30 +412,45 @@ async def _watch_events(game_id: str):
             event_type = event.get("event")
 
             if event_type == "simulation_complete":
+                # DON'T broadcast yet — hold until GM has stepped through all steps
+                sim["sim_finished"] = True
+                sim["completion_event"] = event
+                print(f"[{game_id}] Simulation finished writing all events. "
+                      f"Waiting for GM to step through all {sim['total_steps']} steps.")
+                continue
+
+            if event_type == "simulation_started":
+                # Capture total_steps from the event
+                sim["total_steps"] = event.get("total_steps", 8)
+                # Broadcast immediately — tells frontend the sim is running
                 await _broadcast_event(game_id, event)
-                await _handle_sim_complete(game_id)
-                return
+                continue
 
             step = event.get("step")
 
             if step is not None:
-                # Queue events by step number
+                # Queue events by step number (released when GM clicks Step)
                 sim["step_events_queue"].setdefault(step, []).append(event)
-
-                # Auto-release step 0 when it completes (first step plays immediately)
-                if step == 0 and event_type == "step_complete":
-                    await _release_step_events(game_id, 0)
             else:
-                # Global events (simulation_started) broadcast immediately
+                # Other global events — broadcast immediately
                 await _broadcast_event(game_id, event)
 
-        # Check if process died unexpectedly
-        if sim["process"].poll() is not None and not new_events:
-            status = file_manager.read_status(run_id)
-            if not status or status.get("state") != "completed":
-                await sio.emit("simulation_error", {
-                    "error": "Simulation process terminated unexpectedly",
-                }, room=game_id)
+        # Check if process exited AND we've read all events
+        proc_done = sim["process"].poll() is not None
+        if proc_done and not new_events:
+            if not sim["sim_finished"]:
+                # Process died without writing simulation_complete — error
+                status = file_manager.read_status(run_id)
+                if not status or status.get("state") != "completed":
+                    await sio.emit("simulation_error", {
+                        "error": "Simulation process terminated unexpectedly",
+                    }, room=game_id)
+                    return
+
+            # Watcher exits, but the simulation stays in active_simulations.
+            # The GM can still Step through queued events.
+            print(f"[{game_id}] Event watcher done. "
+                  f"Queued steps: {sorted(sim['step_events_queue'].keys())}")
             return
 
         await asyncio.sleep(0.5)
@@ -467,7 +489,6 @@ async def _release_step_events(game_id: str, step: int):
 
     # Send player-specific data for this step
     num_players = len(file_manager.get_all_player_inputs(
-        # Find the game_id's input folder — use the game_id
         game_id
     )) or 4
 
@@ -482,6 +503,13 @@ async def _release_step_events(game_id: str, step: int):
             }, room=player_room)
 
     sim["current_step"] = step
+
+    # Check if this was the last step — if so, broadcast completion
+    if sim.get("sim_finished") and step >= sim.get("total_steps", 8):
+        print(f"[{game_id}] All {step} steps released. Broadcasting completion.")
+        completion = sim.get("completion_event") or {"event": "simulation_complete"}
+        await _broadcast_event(game_id, completion)
+        await _handle_sim_complete(game_id)
 
 
 async def _broadcast_event(game_id: str, event: dict):
@@ -567,16 +595,32 @@ async def request_step(sid, data):
     if not sim:
         return
 
+    # Prevent concurrent step releases (speeches take ~1.5s each)
+    if sim.get("releasing"):
+        await sio.emit("step_not_ready", {
+            "message": "Still processing current step. Please wait.",
+        }, to=sid)
+        return
+
     next_step = sim["current_step"] + 1
 
     if sim["mode"] == "playback":
         # Release queued events for the next step
         if next_step in sim["step_events_queue"]:
-            await _release_step_events(game_id, next_step)
-        else:
-            # Events not yet available — notify the GM
+            sim["releasing"] = True
+            try:
+                await _release_step_events(game_id, next_step)
+            finally:
+                sim["releasing"] = False
+        elif sim.get("sim_finished") and next_step > sim.get("total_steps", 8):
+            # All steps already completed
             await sio.emit("step_not_ready", {
-                "message": f"Step {next_step} data not yet available",
+                "message": "All steps have been completed",
+            }, to=sid)
+        else:
+            # Events not yet available — simulator still running
+            await sio.emit("step_not_ready", {
+                "message": f"Step {next_step} data not yet available. Simulator still processing.",
             }, to=sid)
     else:
         # sim_control mode — tell the simulator to proceed
@@ -591,7 +635,7 @@ async def request_stop(sid, data):
     if not sim:
         return
 
-    # Kill the subprocess
+    # Kill the subprocess (if still running)
     try:
         sim["process"].terminate()
     except OSError:

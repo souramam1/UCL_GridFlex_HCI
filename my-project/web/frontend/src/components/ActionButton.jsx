@@ -5,7 +5,7 @@ import './ActionButton.css'
  * ActionButton — Circle button with icon, used in the right panel.
  *
  * Props:
- *   type     ("forward" | "stop" | "exit")   — which icon to show
+ *   type     ("forward" | "stop" | "exit" | "save")  — which icon to show
  *   to       (string, optional)     — if provided, renders as a Link
  *   onClick  (function, optional)   — click handler (for non-link usage)
  *   label    (string, optional)     — text below the button (e.g. "Run Simulation")
@@ -16,10 +16,24 @@ import './ActionButton.css'
  *   <ActionButton type="forward" to="/next" disabled={!isValid} />
  *   <ActionButton type="stop" onClick={handleStop} label="Stop" />
  *   <ActionButton type="exit" to="/" label="Exit Simulation" />
+ *   <ActionButton type="save" onClick={handleSave} label="Save" disabled={!canSave} />
  */
 function ActionButton({ type = 'forward', to, onClick, label, disabled = false }) {
-  const icon = type === 'stop' ? '□' : type === 'exit' ? '✕' : '→'
-  const ariaLabel = type === 'stop' ? 'Stop' : type === 'exit' ? 'Exit Simulation' : 'Continue'
+  const iconMap = {
+    stop: '\u25A1',
+    exit: '\u2715',
+    save: '\u2193',
+    forward: '\u2192',
+  }
+  const ariaMap = {
+    stop: 'Stop',
+    exit: 'Exit Simulation',
+    save: 'Save',
+    forward: 'Continue',
+  }
+
+  const icon = iconMap[type] || iconMap.forward
+  const ariaLabel = ariaMap[type] || ariaMap.forward
 
   const buttonContent = (
     <span className="action-button__icon">{icon}</span>

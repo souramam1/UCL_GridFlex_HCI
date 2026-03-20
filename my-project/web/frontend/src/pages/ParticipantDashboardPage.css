@@ -27,6 +27,15 @@
   margin: 0;
 }
 
+.participant-dashboard__step-info {
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin: 0.5rem 0 0;
+  opacity: 0.7;
+}
+
 /* --- Status Band (coloured mid section) --- */
 
 .participant-dashboard__status-band {
@@ -179,6 +188,43 @@
   color: #bbb;
 }
 
+/* --- Agent Reasoning Panel --- */
+
+.participant-dashboard__reasoning {
+  padding: 0 3rem 1.5rem;
+}
+
+.participant-dashboard__reasoning-toggle {
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  padding: 0.5rem 1rem;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.participant-dashboard__reasoning-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.participant-dashboard__reasoning-content {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
 /* ============================================
    PARTICIPANT DASHBOARD - Responsive
    ============================================ */
@@ -205,6 +251,10 @@
     padding: 1.5rem;
     min-height: 30vh;
   }
+
+  .participant-dashboard__reasoning {
+    padding: 0 1.5rem 1rem;
+  }
 }
 
 /* --- Shutdown Countdown Overlay --- */
@@ -228,42 +278,4 @@
   font-weight: var(--font-weight-medium);
   color: #fff;
   text-align: center;
-}
-
-/* --- Debug Toggle Panel (remove when backend connected) --- */
-
-.participant-dashboard__debug {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  background-color: rgba(0, 0, 0, 0.85);
-  color: #fff;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-family: var(--font-primary);
-  font-size: 0.75rem;
-  z-index: 50;
-}
-
-.participant-dashboard__debug-title {
-  font-weight: var(--font-weight-bold);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
-  margin-bottom: 0.2rem;
-}
-
-.participant-dashboard__debug-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-}
-
-.participant-dashboard__debug-toggle input {
-  cursor: pointer;
 }

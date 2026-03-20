@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import './HomePage.css'
 
 function HomePage() {
+  const simulateDisabled = sessionStorage.getItem('simulateDisabled') === 'true'
+
   return (
     <div className="home">
       <div className="home__layout">
@@ -21,9 +23,15 @@ function HomePage() {
         </div>
 
         <div className="home__right">
-          <Link to="/simulate" className="home__simulate">
-            <span className="home__simulate-text">Simulate</span>
-          </Link>
+          {simulateDisabled ? (
+            <div className="home__simulate home__simulate--disabled">
+              <span className="home__simulate-text">Simulate</span>
+            </div>
+          ) : (
+            <Link to="/simulate" className="home__simulate">
+              <span className="home__simulate-text">Simulate</span>
+            </Link>
+          )}
 
           <Link to="/datalog" className="home__datalog">
             <span className="home__datalog-text">Data Log</span>

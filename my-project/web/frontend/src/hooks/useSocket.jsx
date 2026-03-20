@@ -62,6 +62,17 @@ export function useSimEvents(socket) {
   const [agentSpeeches, setAgentSpeeches] = useState([])
   const [stepEvents, setStepEvents] = useState([])
   const [playerData, setPlayerData] = useState(null)
+  const [agentNames, setAgentNames] = useState([])
+  const [targetSoc, setTargetSoc] = useState({})
+  const [timeLabels, setTimeLabels] = useState([])
+  const [violatedLoads, setViolatedLoads] = useState({})
+  const [loadLimitKw, setLoadLimitKw] = useState(null)
+  const [pendingAgents, setPendingAgents] = useState([])
+  const [negotiationActive, setNegotiationActive] = useState(false)
+
+  // Ref to avoid stale closure — handlers below capture the initial
+  // agentNames value, but we need the latest when negotiation_started fires.
+  const agentNamesRef = useRef([])
 
   useEffect(() => {
     if (!socket) return
@@ -70,6 +81,13 @@ export function useSimEvents(socket) {
       simulation_started: (data) => {
         setSimStatus('running')
         setTotalSteps(data.total_steps || 8)
+        if (data.agent_names) {
+          setAgentNames(data.agent_names)
+          agentNamesRef.current = data.agent_names
+        }
+        if (data.target_soc) setTargetSoc(data.target_soc)
+        if (data.time_labels) setTimeLabels(data.time_labels)
+        if (data.load_limit_kw != null) setLoadLimitKw(data.load_limit_kw)
       },
       step_started: (data) => {
         setCurrentStep(data.step)
@@ -77,16 +95,29 @@ export function useSimEvents(socket) {
       },
       decisions_made: (data) => {
         setStepEvents(prev => [...prev, data])
+        // Clear typing indicators when negotiation round resolves
+        setPendingAgents([])
+        setNegotiationActive(false)
       },
       grid_violation: (data) => {
         setStepEvents(prev => [...prev, data])
+        // Record the violated load for this step so the chart can show it
+        if (data.step != null && data.total_load_kw != null) {
+          setViolatedLoads(prev => ({ ...prev, [data.step]: data.total_load_kw }))
+        }
       },
       negotiation_started: (data) => {
         setStepEvents(prev => [...prev, data])
+        // Clear previous round's messages and show typing indicators
+        setAgentSpeeches([])
+        setNegotiationActive(true)
+        setPendingAgents([...agentNamesRef.current])
       },
       agent_speech: (data) => {
         setAgentSpeeches(prev => [...prev, data])
         setStepEvents(prev => [...prev, data])
+        // Remove this agent from typing indicators
+        setPendingAgents(prev => prev.filter(name => name !== data.agent))
       },
       step_complete: (data) => {
         if (data.grid_data) {
@@ -125,5 +156,11 @@ export function useSimEvents(socket) {
     agentSpeeches,
     stepEvents,
     playerData,
+    pendingAgents,
+    negotiationActive,
+    targetSoc,
+    timeLabels,
+    violatedLoads,
+    loadLimitKw,
   }
 }

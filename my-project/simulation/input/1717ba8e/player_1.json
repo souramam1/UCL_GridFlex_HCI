@@ -1,0 +1,9 @@
+{
+  "ev_battery_kwh": 4,
+  "car_away_from": "08:00",
+  "car_away_until": "17:00",
+  "target_soc_pct": 33,
+  "initial_soc_pct": 20,
+  "cooperative": true,
+  "agent_behaviour": "10"
+}

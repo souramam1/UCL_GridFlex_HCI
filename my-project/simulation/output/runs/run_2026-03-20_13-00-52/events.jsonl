@@ -1,0 +1,31 @@
+{"event": "simulation_started", "run_id": "run_2026-03-20_13-00-52", "total_steps": 8, "agent_names": ["House 1", "House 2", "House 3"], "target_soc": {"House 1": 25, "House 2": 60, "House 3": 55}, "time_labels": ["2026-01-15 21:00", "2026-01-15 21:30", "2026-01-15 22:00", "2026-01-15 22:30", "2026-01-15 23:00", "2026-01-15 23:30", "2026-01-16 00:00", "2026-01-16 00:30"], "load_limit_kw": 25, "timestamp": "2026-03-20T13:00:52.176578"}
+{"event": "step_started", "step": 1, "sim_time": "2026-01-15 21:00", "timestamp": "2026-03-20T13:00:52.178175"}
+{"event": "decisions_made", "step": 1, "round": 1, "grid_ok": false, "total_load_kw": 30, "decisions": {"House 1": "Yes", "House 2": "Yes", "House 3": "Yes"}, "timestamp": "2026-03-20T13:00:52.181650"}
+{"event": "grid_violation", "step": 1, "round": 1, "total_load_kw": 30, "load_limit_kw": 25, "max_line_loading_percent": 120.0, "overloaded_lines": ["line_11"], "timestamp": "2026-03-20T13:00:52.932580"}
+{"event": "negotiation_started", "step": 1, "round": 2, "timestamp": "2026-03-20T13:00:53.684737"}
+{"event": "agent_speech", "step": 1, "round": 2, "agent": "House 1", "message": "I would prefer to continue charging. My SOC is at 20% and my target is 25%.", "timestamp": "2026-03-20T13:00:54.135788"}
+{"event": "agent_speech", "step": 1, "round": 2, "agent": "House 2", "message": "I can pause if needed, but I would rather not. Current SOC: 20%.", "timestamp": "2026-03-20T13:00:54.586920"}
+{"event": "agent_speech", "step": 1, "round": 2, "agent": "House 3", "message": "I will defer this round. I can make up the charge in later time steps.", "timestamp": "2026-03-20T13:00:55.038430"}
+{"event": "decisions_made", "step": 1, "round": 2, "grid_ok": true, "total_load_kw": 20, "decisions": {"House 1": "Yes", "House 2": "Yes", "House 3": "No"}, "timestamp": "2026-03-20T13:00:55.500806"}
+{"event": "step_complete", "step": 1, "timestamp": "2026-03-20T13:00:55.501395"}
+{"event": "step_started", "step": 2, "sim_time": "2026-01-15 21:30", "timestamp": "2026-03-20T13:00:57.006603"}
+{"event": "decisions_made", "step": 2, "round": 1, "grid_ok": true, "total_load_kw": 10, "decisions": {"House 1": "No", "House 2": "No", "House 3": "Yes"}, "timestamp": "2026-03-20T13:00:57.011813"}
+{"event": "step_complete", "step": 2, "timestamp": "2026-03-20T13:00:57.012260"}
+{"event": "step_started", "step": 3, "sim_time": "2026-01-15 22:00", "timestamp": "2026-03-20T13:00:58.514399"}
+{"event": "decisions_made", "step": 3, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T13:00:58.518381"}
+{"event": "step_complete", "step": 3, "timestamp": "2026-03-20T13:00:58.518973"}
+{"event": "step_started", "step": 4, "sim_time": "2026-01-15 22:30", "timestamp": "2026-03-20T13:01:00.021758"}
+{"event": "decisions_made", "step": 4, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T13:01:00.026617"}
+{"event": "step_complete", "step": 4, "timestamp": "2026-03-20T13:01:00.027258"}
+{"event": "step_started", "step": 5, "sim_time": "2026-01-15 23:00", "timestamp": "2026-03-20T13:01:01.529360"}
+{"event": "decisions_made", "step": 5, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T13:01:01.533372"}
+{"event": "step_complete", "step": 5, "timestamp": "2026-03-20T13:01:01.533998"}
+{"event": "step_started", "step": 6, "sim_time": "2026-01-15 23:30", "timestamp": "2026-03-20T13:01:03.036438"}
+{"event": "decisions_made", "step": 6, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T13:01:03.040432"}
+{"event": "step_complete", "step": 6, "timestamp": "2026-03-20T13:01:03.040973"}
+{"event": "step_started", "step": 7, "sim_time": "2026-01-16 00:00", "timestamp": "2026-03-20T13:01:04.543688"}
+{"event": "decisions_made", "step": 7, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T13:01:04.547914"}
+{"event": "step_complete", "step": 7, "timestamp": "2026-03-20T13:01:04.548515"}
+{"event": "step_started", "step": 8, "sim_time": "2026-01-16 00:30", "timestamp": "2026-03-20T13:01:06.050904"}
+{"event": "decisions_made", "step": 8, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T13:01:06.055269"}
+{"event": "step_complete", "step": 8, "timestamp": "2026-03-20T13:01:06.055961"}

@@ -1,0 +1,38 @@
+{"event": "simulation_started", "run_id": "run_2026-03-20_12-24-29", "total_steps": 8, "agent_names": ["House 1", "House 2", "House 3"], "timestamp": "2026-03-20T12:24:30.049593"}
+{"event": "step_started", "step": 1, "sim_time": "2026-01-15 21:00", "timestamp": "2026-03-20T12:24:30.051399"}
+{"event": "decisions_made", "step": 1, "round": 1, "grid_ok": true, "decisions": {"House 1": "Yes", "House 2": "Yes", "House 3": "No"}, "timestamp": "2026-03-20T12:24:30.055017"}
+{"event": "step_complete", "step": 1, "timestamp": "2026-03-20T12:24:30.055478"}
+{"event": "step_started", "step": 2, "sim_time": "2026-01-15 21:30", "timestamp": "2026-03-20T12:24:31.557038"}
+{"event": "decisions_made", "step": 2, "round": 1, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:31.561698"}
+{"event": "step_complete", "step": 2, "timestamp": "2026-03-20T12:24:31.562177"}
+{"event": "step_started", "step": 3, "sim_time": "2026-01-15 22:00", "timestamp": "2026-03-20T12:24:33.064155"}
+{"event": "decisions_made", "step": 3, "round": 1, "grid_ok": false, "decisions": {"House 1": "No", "House 2": "No", "House 3": "Yes"}, "timestamp": "2026-03-20T12:24:33.076492"}
+{"event": "grid_violation", "step": 3, "round": 1, "total_load_kw": 10, "max_line_loading_percent": 112.3, "overloaded_lines": ["line_11"], "timestamp": "2026-03-20T12:24:33.827564"}
+{"event": "negotiation_started", "step": 3, "round": 2, "timestamp": "2026-03-20T12:24:34.580553"}
+{"event": "agent_speech", "step": 3, "round": 2, "agent": "House 1", "message": "I need to keep charging. My SOC is only at 100% and I need 75% by departure. Can one of the other households reduce their load?", "timestamp": "2026-03-20T12:24:35.031424"}
+{"event": "agent_speech", "step": 3, "round": 2, "agent": "House 2", "message": "My situation is similar, but I could reduce to half power if that helps. Current SOC is 85%.", "timestamp": "2026-03-20T12:24:35.482190"}
+{"event": "agent_speech", "step": 3, "round": 2, "agent": "House 3", "message": "I have the largest battery and charger, so my impact on the grid is highest. I will defer charging this round and resume next step.", "timestamp": "2026-03-20T12:24:35.934071"}
+{"event": "decisions_made", "step": 3, "round": 2, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:36.388470"}
+{"event": "step_complete", "step": 3, "timestamp": "2026-03-20T12:24:36.389208"}
+{"event": "step_started", "step": 4, "sim_time": "2026-01-15 22:30", "timestamp": "2026-03-20T12:24:37.892616"}
+{"event": "decisions_made", "step": 4, "round": 1, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "Yes"}, "timestamp": "2026-03-20T12:24:37.899610"}
+{"event": "step_complete", "step": 4, "timestamp": "2026-03-20T12:24:37.900198"}
+{"event": "step_started", "step": 5, "sim_time": "2026-01-15 23:00", "timestamp": "2026-03-20T12:24:39.403219"}
+{"event": "decisions_made", "step": 5, "round": 1, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:39.410754"}
+{"event": "step_complete", "step": 5, "timestamp": "2026-03-20T12:24:39.411857"}
+{"event": "step_started", "step": 6, "sim_time": "2026-01-15 23:30", "timestamp": "2026-03-20T12:24:40.914282"}
+{"event": "decisions_made", "step": 6, "round": 1, "grid_ok": false, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:40.918525"}
+{"event": "grid_violation", "step": 6, "round": 1, "total_load_kw": 0, "max_line_loading_percent": 112.3, "overloaded_lines": ["line_11"], "timestamp": "2026-03-20T12:24:41.669926"}
+{"event": "negotiation_started", "step": 6, "round": 2, "timestamp": "2026-03-20T12:24:42.423565"}
+{"event": "agent_speech", "step": 6, "round": 2, "agent": "House 1", "message": "We are getting close to our targets. I only need a bit more. Can someone else wait?", "timestamp": "2026-03-20T12:24:42.874403"}
+{"event": "agent_speech", "step": 6, "round": 2, "agent": "House 2", "message": "I have been flexible before. I think it is fair if someone else defers this time.", "timestamp": "2026-03-20T12:24:43.325367"}
+{"event": "agent_speech", "step": 6, "round": 2, "agent": "House 3", "message": "Fine, I will pause again. I still have enough time to reach my target before departure.", "timestamp": "2026-03-20T12:24:43.776510"}
+{"event": "decisions_made", "step": 6, "round": 2, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:44.230306"}
+{"event": "step_complete", "step": 6, "timestamp": "2026-03-20T12:24:44.230875"}
+{"event": "step_started", "step": 7, "sim_time": "2026-01-16 00:00", "timestamp": "2026-03-20T12:24:45.733752"}
+{"event": "decisions_made", "step": 7, "round": 1, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:45.739036"}
+{"event": "step_complete", "step": 7, "timestamp": "2026-03-20T12:24:45.739713"}
+{"event": "step_started", "step": 8, "sim_time": "2026-01-16 00:30", "timestamp": "2026-03-20T12:24:47.243675"}
+{"event": "decisions_made", "step": 8, "round": 1, "grid_ok": true, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T12:24:47.251901"}
+{"event": "step_complete", "step": 8, "timestamp": "2026-03-20T12:24:47.252924"}
+{"event": "simulation_complete", "run_id": "run_2026-03-20_12-24-29", "timestamp": "2026-03-20T12:24:48.756587"}

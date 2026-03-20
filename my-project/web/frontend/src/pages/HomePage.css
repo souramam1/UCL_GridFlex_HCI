@@ -85,6 +85,13 @@
   background-color: #6A8CCB;
 }
 
+.home__simulate--disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
 .home__simulate-text {
   font-family: var(--font-primary);
   font-size: 2.5rem;

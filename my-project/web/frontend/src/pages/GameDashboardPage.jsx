@@ -1,22 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PageLayout, LeftPanel } from '../components/PageLayout'
 import NavBar from '../components/NavBar'
 import RightPanel from '../components/RightPanel'
 import ActionButton from '../components/ActionButton'
+import { useSocket, useSimEvents } from '../hooks/useSocket'
+import SimCharts from '../components/SimCharts'
 import './GameDashboardPage.css'
-
-/**
- * Placeholder negotiation messages — will come from backend.
- */
-const DEMO_MESSAGES = [
-  { id: 1, sender: 'Household 1', text: 'Hey! Stop charging your cars everyone, we have to go first.', side: 'left' },
-  { id: 2, sender: 'Household 2', text: "I don't think I can today, sorry.", side: 'right' },
-  { id: 3, sender: 'Household 3', text: "I'll stop now, but I want to be prioritised the next two rounds...", side: 'left' },
-  { id: 4, sender: 'Household 1', text: "That's fine, but we need priority this round.", side: 'left' },
-  { id: 5, sender: 'Household 4', text: "I can reduce my charging rate by 50% if that helps.", side: 'right' },
-  { id: 6, sender: 'Household 2', text: "OK, I'll defer to next round then.", side: 'right' },
-]
 
 /** Default open height as a fraction of the viewport */
 const DEFAULT_OPEN_RATIO = 0.45
@@ -26,40 +16,90 @@ const MIN_HEIGHT = 100
 const MAX_HEIGHT_RATIO = 0.85
 
 /**
- * GameDashboardPage — Game Master's simulation dashboard.
+ * GameDashboardPage - Game Master's simulation dashboard.
  *
  * Layout:
- *   - Scrollable charts area (centered, large)
- *   - Fixed negotiation bar at the bottom (left edge to sidebar)
- *     that toggles open, expanding UPWARD to ~45vh.
- *     The panel is draggable to resize after opening.
- *     Click the toggle bar again to close.
- *   - Right sidebar with status info + Stop/Step buttons
+ *   - Scrollable data area (tables for SoC + grid status, event log)
+ *   - Fixed negotiation bar at the bottom (expands UPWARD, draggable)
+ *   - Right sidebar with live status info + Save/Stop/Step buttons
  *
  * Route: /game/:gameId/dashboard
  */
 function GameDashboardPage() {
   const { gameId } = useParams()
-  const [showNegotiation, setShowNegotiation] = useState(false)
-  const [panelHeight, setPanelHeight] = useState(null) // px, null = use default
-  const [isDragging, setIsDragging] = useState(false)
-  const toggleRef = useRef(null)
+  const navigate = useNavigate()
+  const socket = useSocket(gameId, null)
+  const {
+    currentStep,
+    totalSteps,
+    simStatus,
+    gridData,
+    agentSpeeches,
+    stepEvents,
+    pendingAgents,
+    negotiationActive,
+    targetSoc,
+    timeLabels,
+    violatedLoads,
+    loadLimitKw,
+  } = useSimEvents(socket)
 
-  // Placeholder status data — will come from backend via WebSocket
+  const [showNegotiation, setShowNegotiation] = useState(false)
+  const [panelHeight, setPanelHeight] = useState(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [shutdownCountdown, setShutdownCountdown] = useState(null)
+  const toggleRef = useRef(null)
+  const messagesEndRef = useRef(null)
+
+  // Auto-open negotiation panel when a new negotiation round starts
+  const prevNegotiationActive = useRef(false)
+  useEffect(() => {
+    if (negotiationActive && !prevNegotiationActive.current) {
+      setShowNegotiation(true)
+      setPanelHeight(window.innerHeight * DEFAULT_OPEN_RATIO)
+    }
+    prevNegotiationActive.current = negotiationActive
+  }, [negotiationActive])
+
+  // Auto-scroll negotiation panel when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current && showNegotiation) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [agentSpeeches.length, pendingAgents.length, showNegotiation])
+
+  // Countdown timer — ticks down then navigates home
+  useEffect(() => {
+    if (shutdownCountdown === null) return
+    if (shutdownCountdown <= 0) {
+      navigate('/')
+      return
+    }
+    const timer = setTimeout(() => {
+      setShutdownCountdown(shutdownCountdown - 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [shutdownCountdown, navigate])
+
+  // Derive status from latest grid data
+  const latestGrid = gridData.length > 0 ? gridData[gridData.length - 1] : null
   const status = {
-    time: '12:25am',
-    timeStep: '4/8',
-    gridConstrained: false,
-    networkLoad: '44kW',
+    time: latestGrid?.date || '--:--',
+    timeStep: currentStep >= 0 ? `${currentStep}/${totalSteps}` : '--/--',
+    gridConstrained: latestGrid?.grid_ok === false,
+    networkLoad: latestGrid?.total_load_kw
+      ? `${latestGrid.total_load_kw.toFixed(1)} kW`
+      : '-- kW',
+    status: simStatus,
   }
+
+  const isStopped = simStatus === 'stopped' || simStatus === 'completed'
 
   const handleToggle = () => {
     if (showNegotiation) {
-      // Closing — reset height
       setShowNegotiation(false)
       setPanelHeight(null)
     } else {
-      // Opening — set default height
       setShowNegotiation(true)
       setPanelHeight(window.innerHeight * DEFAULT_OPEN_RATIO)
     }
@@ -79,7 +119,6 @@ function GameDashboardPage() {
 
     const handleMouseMove = (e) => {
       const maxHeight = window.innerHeight * MAX_HEIGHT_RATIO
-      // Panel height = distance from mouse to bottom, minus the toggle bar
       const newHeight = window.innerHeight - e.clientY - toggleHeight
       setPanelHeight(Math.max(MIN_HEIGHT, Math.min(newHeight, maxHeight)))
     }
@@ -97,10 +136,52 @@ function GameDashboardPage() {
     }
   }, [isDragging])
 
+  const handleStep = () => {
+    if (socket) {
+      socket.emit('request_step', { game_id: gameId })
+    }
+  }
+
+  const handleStop = () => {
+    if (socket) {
+      socket.emit('request_stop', { game_id: gameId })
+    }
+  }
+
+  const handleSave = () => {
+    // TODO: trigger PDF generation via backend
+    // For now, start the shutdown countdown
+    setShutdownCountdown(5)
+  }
+
   // Build inline style for the panel when open
   const panelStyle = showNegotiation && panelHeight != null
     ? { height: `${panelHeight}px` }
     : {}
+
+  // Format event log entries
+  const formatEvent = (evt) => {
+    switch (evt.event) {
+      case 'step_started':
+        return `Step ${evt.step} started${evt.sim_time ? ` (${evt.sim_time})` : ''}`
+      case 'decisions_made':
+        return `Step ${evt.step} R${evt.round} decisions ${evt.grid_ok ? '(OK)' : '(VIOLATION)'}`
+      case 'grid_violation':
+        return `Grid violation at step ${evt.step}: ${evt.total_load_kw || '?'} kW`
+      case 'negotiation_started':
+        return `Negotiation started (step ${evt.step}, round ${evt.round})`
+      case 'agent_speech':
+        return `${evt.agent}: ${(evt.message || '').substring(0, 60)}${(evt.message || '').length > 60 ? '...' : ''}`
+      case 'step_complete':
+        return `Step ${evt.step} complete`
+      case 'simulation_complete':
+        return 'Simulation complete'
+      case 'simulation_stopped':
+        return 'Simulation stopped'
+      default:
+        return evt.event || 'unknown event'
+    }
+  }
 
   return (
     <>
@@ -108,21 +189,35 @@ function GameDashboardPage() {
         <LeftPanel scrollable compact>
           <NavBar disabled />
 
-          {/* Scrollable charts area */}
-          <div className="dashboard__charts">
-            <div className="dashboard__chart-section">
-              <h2 className="dashboard__chart-heading">EV State of Charge</h2>
-              <div className="dashboard__chart-placeholder">
-                Chart placeholder — EV State of Charge
-              </div>
-            </div>
+          {/* Status banner */}
+          <div className="dashboard__status-banner">
+            <span className={`dashboard__sim-status dashboard__sim-status--${simStatus}`}>
+              {simStatus.toUpperCase()}
+            </span>
+            {simStatus === 'running' && (
+              <span className={`dashboard__sim-status dashboard__sim-status--${negotiationActive ? 'negotiation' : 'operation'}`}>
+                {negotiationActive ? 'NEGOTIATION' : 'OPERATION'}
+              </span>
+            )}
+            {currentStep >= 0 && (
+              <span className="dashboard__step-label">
+                Step {currentStep} / {totalSteps}
+              </span>
+            )}
+          </div>
 
-            <div className="dashboard__chart-section">
-              <h2 className="dashboard__chart-heading">Total Grid Load</h2>
-              <div className="dashboard__chart-placeholder">
-                Chart placeholder — Total Grid Load
-              </div>
-            </div>
+          {/* Scrollable data area — charts + event log (tabbed) */}
+          <div className="dashboard__charts">
+            <SimCharts
+              gridData={gridData}
+              stepEvents={stepEvents}
+              formatEvent={formatEvent}
+              targetSoc={targetSoc}
+              timeLabels={timeLabels}
+              totalSteps={totalSteps}
+              violatedLoads={violatedLoads}
+              loadLimitKw={loadLimitKw}
+            />
           </div>
         </LeftPanel>
 
@@ -134,31 +229,51 @@ function GameDashboardPage() {
               <li>Time step: {status.timeStep}</li>
               <li>Grid constrained: {status.gridConstrained ? 'True' : 'False'}</li>
               <li>Network Load: {status.networkLoad}</li>
+              <li>Status: {status.status}</li>
             </ul>
           </div>
 
-          {/* Stop and Step action buttons */}
+          {/* Save, Stop and Step action buttons */}
           <div className="dashboard__actions">
-            <ActionButton type="stop" label="Stop" onClick={() => {
-              localStorage.setItem(`gridflex_stopped_${gameId}`, 'true')
-            }} />
-            <ActionButton type="forward" label="Step" />
+            <ActionButton
+              type="save"
+              label="Save"
+              onClick={handleSave}
+              disabled={!isStopped}
+            />
+            <ActionButton
+              type="stop"
+              label="Stop"
+              onClick={handleStop}
+              disabled={isStopped}
+            />
+            <ActionButton
+              type="forward"
+              label="Step"
+              onClick={handleStep}
+              disabled={simStatus !== 'running'}
+            />
           </div>
         </RightPanel>
       </PageLayout>
 
-      {/* Negotiation bar — fixed at bottom, expands upward, draggable */}
+      {/* Negotiation bar - fixed at bottom, expands upward, draggable */}
       <div className={`dashboard__negotiation${showNegotiation ? ' dashboard__negotiation--open' : ''}`}>
-        {/* Title bar — click to open/close */}
+        {/* Title bar - click to open/close */}
         <button
           ref={toggleRef}
           className="dashboard__negotiation-toggle"
           onClick={handleToggle}
         >
           {'< Negotiation Dashboard >'}
+          {agentSpeeches.length > 0 && (
+            <span className="dashboard__speech-count">
+              {` (${agentSpeeches.length} messages)`}
+            </span>
+          )}
         </button>
 
-        {/* Drag handle — visible when panel is open */}
+        {/* Drag handle - visible when panel is open */}
         {showNegotiation && (
           <div
             className="dashboard__negotiation-drag"
@@ -168,22 +283,59 @@ function GameDashboardPage() {
           </div>
         )}
 
-        {/* Messages area — expands below the title */}
+        {/* Messages area - agent speeches + typing indicators */}
         <div
           className={`dashboard__negotiation-panel${showNegotiation ? ' dashboard__negotiation-panel--open' : ''}${isDragging ? ' dashboard__negotiation-panel--dragging' : ''}`}
           style={panelStyle}
         >
-          {DEMO_MESSAGES.map(msg => (
-            <div
-              key={msg.id}
-              className={`dashboard__chat-bubble dashboard__chat-bubble--${msg.side}`}
-            >
-              <span className="dashboard__chat-sender">{msg.sender}: </span>
-              <span className="dashboard__chat-text">{msg.text}</span>
+          {agentSpeeches.length === 0 && pendingAgents.length === 0 ? (
+            <div className="dashboard__chat-empty">
+              No negotiations yet. Speeches will appear here when grid violations trigger negotiation rounds.
             </div>
-          ))}
+          ) : (
+            <>
+              {/* Delivered speech bubbles */}
+              {agentSpeeches.map((msg, i) => (
+                <div
+                  key={`speech-${i}`}
+                  className={`dashboard__chat-bubble dashboard__chat-bubble--${i % 2 === 0 ? 'left' : 'right'}`}
+                >
+                  <span className="dashboard__chat-sender">{msg.agent}: </span>
+                  <span className="dashboard__chat-text">{msg.message}</span>
+                  <span className="dashboard__chat-meta">
+                    {` (Step ${msg.step}, R${msg.round})`}
+                  </span>
+                </div>
+              ))}
+
+              {/* Typing indicators for agents who haven't spoken yet */}
+              {pendingAgents.map((agentName) => (
+                <div
+                  key={`typing-${agentName}`}
+                  className="dashboard__chat-bubble dashboard__chat-bubble--typing"
+                >
+                  <span className="dashboard__chat-sender">{agentName}</span>
+                  <span className="dashboard__typing-dots">
+                    <span className="dashboard__typing-dot" />
+                    <span className="dashboard__typing-dot" />
+                    <span className="dashboard__typing-dot" />
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Shutdown countdown overlay */}
+      {shutdownCountdown !== null && (
+        <div className="dashboard__shutdown-overlay">
+          <p className="dashboard__shutdown-text">
+            Data saved. Returning to home in {shutdownCountdown}s...
+          </p>
+        </div>
+      )}
 
       {/* Overlay to prevent text selection while dragging */}
       {isDragging && <div className="dashboard__drag-overlay" />}

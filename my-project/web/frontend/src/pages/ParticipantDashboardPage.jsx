@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import HouseScene from '../components/HouseScene'
+import { useSocket, useSimEvents } from '../hooks/useSocket'
 import './ParticipantDashboardPage.css'
 
 /**
- * Static household data — maps playerId (1-4) to metadata and colour.
- * Will eventually come from the backend.
+ * Static household metadata — maps playerNumber (1-4) to display info.
  */
 const HOUSEHOLDS = {
   1: { name: 'Household A', letter: 'A', color: 'blue',    hex: '#7B9BD6' },
@@ -24,42 +24,45 @@ const HOUSEHOLDS = {
  *   - Coloured status band: timeline bar, charging status, goal,
  *     progress, agent type
  *   - Bottom cream area: animated HouseScene SVG
+ *   - Collapsible reasoning panel at the bottom
  *
  * Route: /game/:gameId/player/:playerId/dashboard
  */
 function ParticipantDashboardPage() {
   const { gameId, playerId } = useParams()
   const navigate = useNavigate()
-  const hh = HOUSEHOLDS[playerId] || HOUSEHOLDS[1]
+  const socket = useSocket(gameId, playerId)
+  const {
+    currentStep,
+    totalSteps,
+    simStatus,
+    playerData,
+  } = useSimEvents(socket)
+
+  const [playerNumber, setPlayerNumber] = useState(null)
   const [shutdownCountdown, setShutdownCountdown] = useState(null)
+  const [showReasoning, setShowReasoning] = useState(false)
 
-  // Poll for game stopped flag — show 5s countdown then navigate away
-  // (Will be replaced by WebSocket event in production)
+  // Fetch player number from backend (hex playerId in URL)
   useEffect(() => {
-    const interval = setInterval(() => {
-      const stopped = localStorage.getItem(`gridflex_stopped_${gameId}`)
-      if (stopped === 'true' && shutdownCountdown === null) {
-        setShutdownCountdown(5)
-      }
-    }, 1000)
+    fetch(`/api/games/${gameId}/player/${playerId}`)
+      .then(r => r.json())
+      .then(data => setPlayerNumber(data.number))
+      .catch(err => console.error('Failed to fetch player:', err))
+  }, [gameId, playerId])
 
-    const handleStorage = (e) => {
-      if (e.key === `gridflex_stopped_${gameId}` && e.newValue === 'true') {
-        setShutdownCountdown(5)
-      }
+  // Trigger shutdown countdown when simulation ends
+  useEffect(() => {
+    if ((simStatus === 'stopped' || simStatus === 'completed') && shutdownCountdown === null) {
+      setShutdownCountdown(5)
     }
-    window.addEventListener('storage', handleStorage)
-
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('storage', handleStorage)
-    }
-  }, [gameId, shutdownCountdown])
+  }, [simStatus, shutdownCountdown])
 
   // Countdown timer — ticks down from 5 to 0, then navigates to home
   useEffect(() => {
     if (shutdownCountdown === null) return
     if (shutdownCountdown <= 0) {
+      sessionStorage.setItem('simulateDisabled', 'true')
       navigate('/')
       return
     }
@@ -69,24 +72,45 @@ function ParticipantDashboardPage() {
     return () => clearTimeout(timer)
   }, [shutdownCountdown, navigate])
 
-  // Placeholder simulation data — will come from backend via WebSocket
-  const sim = {
-    currentTime: '08:15',
-    goalTime: '9:30',
-    goalPercent: 70,
-    isCharging: true,
-    progressPercent: 50,
-    agentMode: 'Cooperative',
-    // Timeline positions as percentages (0–100) for the progress bar
-    currentPos: 35,   // current time position on the bar
-    chargeStart: 30,  // where the gold charging section starts
-    chargeEnd: 55,    // where the gold charging section ends
+  if (!playerNumber) {
+    return <div className="participant-dashboard"><p style={{ padding: '2rem' }}>Loading...</p></div>
   }
 
-  // --- Debug toggles (for testing without backend) ---
-  const [dbgCarPresent, setDbgCarPresent] = useState(true)
-  const [dbgCharging, setDbgCharging] = useState(true)
-  const [dbgGridOverloaded, setDbgGridOverloaded] = useState(false)
+  const hh = HOUSEHOLDS[playerNumber] || HOUSEHOLDS[1]
+
+  // Derive display values from real playerData (or show defaults)
+  const sim = playerData ? {
+    currentTime: playerData.sim_time || '--:--',
+    goalTime: playerData.departure_time || '--:--',
+    goalPercent: playerData.target_soc_pct != null ? playerData.target_soc_pct : '--',
+    isCharging: playerData.charging || false,
+    progressPercent: playerData.soc_pct != null
+      ? Math.min(100, Math.round((playerData.soc_pct / (playerData.target_soc_pct || 100)) * 100))
+      : 0,
+    agentMode: playerData.agent_mode || '--',
+    decision: playerData.decision || '--',
+    reasoning: playerData.decision_reasoning || null,
+    socKwh: playerData.soc_kwh != null ? playerData.soc_kwh.toFixed(1) : '--',
+    // Timeline positions (approximate from step progress)
+    currentPos: totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0,
+    chargeStart: 20,
+    chargeEnd: playerData.charging ? Math.min(90, 20 + (playerData.soc_pct || 0) * 0.7) : 20,
+    gridOk: playerData.grid_ok !== false,
+  } : {
+    currentTime: '--:--',
+    goalTime: '--:--',
+    goalPercent: '--',
+    isCharging: false,
+    progressPercent: 0,
+    agentMode: '--',
+    decision: '--',
+    reasoning: null,
+    socKwh: '--',
+    currentPos: 0,
+    chargeStart: 20,
+    chargeEnd: 20,
+    gridOk: true,
+  }
 
   return (
     <div className="participant-dashboard">
@@ -99,6 +123,11 @@ function ParticipantDashboardPage() {
         >
           {hh.name}
         </h1>
+        {currentStep >= 0 && (
+          <p className="participant-dashboard__step-info">
+            Step {currentStep} / {totalSteps}
+          </p>
+        )}
       </div>
 
       {/* --- Coloured status band --- */}
@@ -147,8 +176,13 @@ function ParticipantDashboardPage() {
         <div className="participant-dashboard__info-row">
           {/* Charging status */}
           <div className="participant-dashboard__info-item">
-            <span className="participant-dashboard__status-dot participant-dashboard__status-dot--charging" />
+            <span className={`participant-dashboard__status-dot participant-dashboard__status-dot--${sim.isCharging ? 'charging' : 'idle'}`} />
             <span>{sim.isCharging ? 'Charging' : 'Not Charging'}</span>
+          </div>
+
+          {/* Decision */}
+          <div className="participant-dashboard__info-item">
+            <span>Decision: {sim.decision}</span>
           </div>
 
           {/* Progress */}
@@ -159,7 +193,7 @@ function ParticipantDashboardPage() {
                 style={{ width: `${sim.progressPercent}%` }}
               />
             </span>
-            <span>{sim.progressPercent}% of target</span>
+            <span>{sim.socKwh} kWh ({sim.progressPercent}%)</span>
           </div>
 
           {/* Agent mode */}
@@ -172,49 +206,37 @@ function ParticipantDashboardPage() {
       {/* --- Bottom cream section (animated SVG scene) --- */}
       <div className="participant-dashboard__scene">
         <HouseScene
-          carPresent={dbgCarPresent}
-          charging={dbgCharging}
-          gridOverloaded={dbgGridOverloaded}
+          carPresent={true}
+          charging={sim.isCharging}
+          gridOverloaded={!sim.gridOk}
         />
       </div>
+
+      {/* --- Collapsible Reasoning Panel --- */}
+      {sim.reasoning && (
+        <div className="participant-dashboard__reasoning">
+          <button
+            className="participant-dashboard__reasoning-toggle"
+            onClick={() => setShowReasoning(!showReasoning)}
+          >
+            {showReasoning ? '\u25BC' : '\u25B6'} Agent Reasoning
+          </button>
+          {showReasoning && (
+            <div className="participant-dashboard__reasoning-content">
+              {sim.reasoning}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* --- Shutdown countdown overlay --- */}
       {shutdownCountdown !== null && (
         <div className="participant-dashboard__shutdown-overlay">
           <p className="participant-dashboard__shutdown-text">
-            Simulation ended. This page will close in {shutdownCountdown}s...
+            Simulation {simStatus === 'completed' ? 'complete' : 'stopped'}. This page will close in {shutdownCountdown}s...
           </p>
         </div>
       )}
-
-      {/* --- Debug toggle panel (dev only — remove when backend connected) --- */}
-      <div className="participant-dashboard__debug">
-        <span className="participant-dashboard__debug-title">Debug</span>
-        <label className="participant-dashboard__debug-toggle">
-          <input
-            type="checkbox"
-            checked={dbgCarPresent}
-            onChange={e => setDbgCarPresent(e.target.checked)}
-          />
-          Car Present
-        </label>
-        <label className="participant-dashboard__debug-toggle">
-          <input
-            type="checkbox"
-            checked={dbgCharging}
-            onChange={e => setDbgCharging(e.target.checked)}
-          />
-          Charging
-        </label>
-        <label className="participant-dashboard__debug-toggle">
-          <input
-            type="checkbox"
-            checked={dbgGridOverloaded}
-            onChange={e => setDbgGridOverloaded(e.target.checked)}
-          />
-          Grid Overloaded
-        </label>
-      </div>
     </div>
   )
 }
