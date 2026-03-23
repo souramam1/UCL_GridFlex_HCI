@@ -1,0 +1,26 @@
+{"event": "simulation_started", "run_id": "run_2026-03-20_17-48-52", "total_steps": 8, "agent_names": ["House 1", "House 2", "House 3"], "target_soc": {"House 1": 22, "House 2": 75, "House 3": 50}, "time_labels": ["2026-01-15 21:00", "2026-01-15 21:30", "2026-01-15 22:00", "2026-01-15 22:30", "2026-01-15 23:00", "2026-01-15 23:30", "2026-01-16 00:00", "2026-01-16 00:30"], "load_limit_kw": 20, "timestamp": "2026-03-20T17:48:52.697243"}
+{"event": "step_started", "step": 1, "sim_time": "2026-01-15 21:00", "timestamp": "2026-03-20T17:48:52.700000"}
+{"event": "decisions_made", "step": 1, "round": 1, "grid_ok": true, "total_load_kw": 20, "decisions": {"House 1": "Yes", "House 2": "No", "House 3": "Yes"}, "timestamp": "2026-03-20T17:48:52.705759"}
+{"event": "step_complete", "step": 1, "timestamp": "2026-03-20T17:48:52.706615"}
+{"event": "step_started", "step": 2, "sim_time": "2026-01-15 21:30", "timestamp": "2026-03-20T17:48:54.208500"}
+{"event": "decisions_made", "step": 2, "round": 1, "grid_ok": true, "total_load_kw": 10, "decisions": {"House 1": "No", "House 2": "Yes", "House 3": "No"}, "timestamp": "2026-03-20T17:48:54.212661"}
+{"event": "step_complete", "step": 2, "timestamp": "2026-03-20T17:48:54.213099"}
+{"event": "step_started", "step": 3, "sim_time": "2026-01-15 22:00", "timestamp": "2026-03-20T17:48:55.715304"}
+{"event": "decisions_made", "step": 3, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T17:48:55.719677"}
+{"event": "step_complete", "step": 3, "timestamp": "2026-03-20T17:48:55.720740"}
+{"event": "step_started", "step": 4, "sim_time": "2026-01-15 22:30", "timestamp": "2026-03-20T17:48:57.224293"}
+{"event": "decisions_made", "step": 4, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T17:48:57.229153"}
+{"event": "step_complete", "step": 4, "timestamp": "2026-03-20T17:48:57.229884"}
+{"event": "step_started", "step": 5, "sim_time": "2026-01-15 23:00", "timestamp": "2026-03-20T17:48:58.734753"}
+{"event": "decisions_made", "step": 5, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T17:48:58.741917"}
+{"event": "step_complete", "step": 5, "timestamp": "2026-03-20T17:48:58.742848"}
+{"event": "step_started", "step": 6, "sim_time": "2026-01-15 23:30", "timestamp": "2026-03-20T17:49:00.245793"}
+{"event": "decisions_made", "step": 6, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T17:49:00.250135"}
+{"event": "step_complete", "step": 6, "timestamp": "2026-03-20T17:49:00.250684"}
+{"event": "step_started", "step": 7, "sim_time": "2026-01-16 00:00", "timestamp": "2026-03-20T17:49:01.753546"}
+{"event": "decisions_made", "step": 7, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T17:49:01.761366"}
+{"event": "step_complete", "step": 7, "timestamp": "2026-03-20T17:49:01.761981"}
+{"event": "step_started", "step": 8, "sim_time": "2026-01-16 00:30", "timestamp": "2026-03-20T17:49:03.264086"}
+{"event": "decisions_made", "step": 8, "round": 1, "grid_ok": true, "total_load_kw": 0, "decisions": {"House 1": "No", "House 2": "No", "House 3": "No"}, "timestamp": "2026-03-20T17:49:03.268190"}
+{"event": "step_complete", "step": 8, "timestamp": "2026-03-20T17:49:03.269218"}
+{"event": "simulation_complete", "run_id": "run_2026-03-20_17-48-52", "timestamp": "2026-03-20T17:49:04.774154"}

@@ -1,0 +1,15 @@
+run_id: run_2026-03-20_17-50-18
+scenario:
+  id: 1
+  name: Scenario I
+players: 1
+households:
+  house_1:
+    player_id: player_1
+    ev_battery_kwh: 5
+    car_away_from: 08:00
+    car_away_until: '17:00'
+    target_soc_pct: 22
+    initial_soc_pct: 20
+    cooperative: true
+    agent_behaviour: I am super chill today.

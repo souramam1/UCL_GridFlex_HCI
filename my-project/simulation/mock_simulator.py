@@ -7,7 +7,16 @@ mimicking the behavior of the real Concordia-based simulation.
 
 Usage:
     python mock_simulator.py --input <path>.yaml --run-dir <run_dir> \
-        [--delay 1.5] [--scenario clean|negotiation]
+        [--delay 1.5] [--scenario clean|negotiation|staggered|peak_hours]
+
+Scenarios:
+    clean        No grid violations (load limit = infinity).
+    negotiation  Violations when ALL houses charge simultaneously.
+                 Uses arrival times from YAML (default: 21:00 → connected step 2).
+    staggered    Houses connect one-by-one across steps, so load ramps up
+                 gradually: first few steps clean, then violations once all charge.
+    peak_hours   All cars arrive 1 hour before sim start — violations from step 1,
+                 resolving as houses finish charging.
 
 Run directory layout (created by this simulator):
     <run_dir>/
@@ -107,7 +116,15 @@ NEGOTIATION_TEMPLATES_DEFAULT = [
 class MockSimulator:
     """
     Reads input YAML, produces output files matching the real simulation format.
-    Supports clean (no violations) and negotiation (dynamic load-based violations).
+
+    Scenarios:
+      clean        - No violations (load limit infinite).
+      negotiation  - Violations when all N houses charge; uses YAML arrival times.
+      staggered    - Houses connect one-by-one; ramp from clean → violation.
+      peak_hours   - All connected at step 1; violations from the start.
+
+    Load limit is always (N-1)*charger_kw so that deferring 1 house resolves it,
+    regardless of the number of players.
     """
 
     def __init__(self, config, run_dir, delay, scenario):
@@ -130,7 +147,8 @@ class MockSimulator:
         self.num_houses = len(self.households)
 
         # Fixed charger power per house (matches real Concordia ~10 kW)
-        self.charger_kw = {num: 10 for num in self.households}
+        CHARGER_KW = 10
+        self.charger_kw = {num: CHARGER_KW for num in self.households}
 
         # Per-house charge efficiency multiplier (creates SOC divergence)
         sorted_nums = sorted(self.households)
@@ -167,10 +185,19 @@ class MockSimulator:
                 hour=hour, minute=minute,
             )
 
-        # Grid load limit (kW) — violations when total load exceeds this.
-        # With 4 houses × 10 kW chargers, all 4 charging = 40 kW.
-        # Threshold at 30 kW: deferring 1 house brings load to 30 ≤ 30.
-        self.load_limit_kw = 30 if scenario == "negotiation" else 9999
+        # Grid load limit (kW) — dynamic based on number of houses.
+        # (N-1) houses can charge without violation; all N = violation.
+        # Deferring 1 house always resolves it: (N-1)*10 ≤ (N-1)*10.
+        if scenario == "clean" or self.num_houses <= 1:
+            self.load_limit_kw = 9999
+        else:
+            self.load_limit_kw = (self.num_houses - 1) * CHARGER_KW
+
+        # Scenario-specific arrival time overrides
+        if scenario == "staggered":
+            self._apply_staggered_arrivals()
+        elif scenario == "peak_hours":
+            self._apply_peak_arrivals()
 
         # Track number of violation steps for the summary
         self.violation_count = 0
@@ -200,6 +227,38 @@ class MockSimulator:
         event_data["timestamp"] = datetime.now().isoformat()
         append_jsonl(self.control_dir / "events.jsonl", event_data)
 
+    # -- Scenario arrival overrides --
+
+    def _apply_staggered_arrivals(self):
+        """Override arrival times so houses connect one-by-one across steps.
+
+        First house arrives 30 min before sim start (connected at step 1).
+        Each subsequent house arrives 30 min later.
+
+        With 4 houses:  H1@20:30  H2@21:00  H3@21:30  H4@22:00
+          Step 1 (21:00): 1 house  → clean
+          Step 2 (21:30): 2 houses → clean
+          Step 3 (22:00): 3 houses → clean  (30 kW ≤ 30 limit)
+          Step 4 (22:30): 4 houses → VIOLATION (40 kW > 30)
+        """
+        sorted_nums = sorted(self.households)
+        for i, num in enumerate(sorted_nums):
+            self.connect_time[num] = (
+                self.start_time - timedelta(minutes=30)
+                + timedelta(minutes=30 * i)
+            )
+
+    def _apply_peak_arrivals(self):
+        """All cars arrive 1 hour before sim start — everyone connected at step 1.
+
+        With 4 houses:  all arrive at 20:00
+          Step 1 (21:00): 4 houses → VIOLATION from the start
+          Violations continue until houses finish charging and drop off.
+        """
+        early = self.start_time - timedelta(hours=1)
+        for num in self.households:
+            self.connect_time[num] = early
+
     # -- Main loop --
 
     def run(self):
@@ -208,6 +267,18 @@ class MockSimulator:
         self._write_initial_status()
 
         sorted_houses = sorted(self.households)
+
+        # Print scenario overview
+        arrivals = ", ".join(
+            f"H{n}@{self.connect_time[n].strftime('%H:%M')}"
+            for n in sorted_houses
+        )
+        print(f"\n  Scenario:   {self.scenario}")
+        print(f"  Houses:     {self.num_houses}")
+        print(f"  Load limit: {self.load_limit_kw} kW  "
+              f"(max possible: {self.num_houses * 10} kW)")
+        print(f"  Arrivals:   {arrivals}")
+        print()
         self.emit({
             "event": "simulation_started",
             "run_id": self.config.get("run_id", "unknown"),
@@ -238,6 +309,11 @@ class MockSimulator:
             "run_id": self.config.get("run_id", "unknown"),
         })
 
+        # Print final summary
+        clean = self.total_steps - self.violation_count
+        print(f"\n  Done: {clean} clean / {self.violation_count} violation "
+              f"(of {self.total_steps} steps)")
+
     # -- Step execution --
 
     def _run_step(self, step):
@@ -262,6 +338,14 @@ class MockSimulator:
             self.charger_kw[n] for n, c in charging.items() if c
         )
         grid_ok = round1_load <= self.load_limit_kw
+
+        # Log step summary
+        charging_names = [f"H{n}" for n in sorted(self.households) if charging[n]]
+        status_str = "VIOLATION" if not grid_ok else "ok"
+        print(f"  Step {step:2d} | {sim_time.split(' ')[1]} | "
+              f"Charging: {','.join(charging_names) or '-':20s} | "
+              f"Load: {round1_load:3.0f}/{self.load_limit_kw:3.0f} kW | "
+              f"{status_str}")
 
         self._write_round_data(step, 1, sim_time, grid_ok, decisions, charging)
 
@@ -485,7 +569,7 @@ class MockSimulator:
         for num, h in self.households.items():
             agents[self.name(num)] = {
                 "soc_pct": h.get("initial_soc_pct", 20.0),
-                "connected": False,
+                "connected": self.is_connected(num, 1),
                 "battery_kwh": h.get("ev_battery_kwh", 35),
                 "charger_kw": self.charger_kw[num],
                 "target_soc_pct": h.get("target_soc_pct", 80),
@@ -566,8 +650,9 @@ def main():
     parser.add_argument("--delay", type=float, default=1.5,
                         help="Delay in seconds between steps (default: 1.5)")
     parser.add_argument("--scenario",
-                        choices=["clean", "negotiation"], default="clean",
-                        help="Canned scenario to run (default: clean)")
+                        choices=["clean", "negotiation", "staggered", "peak_hours"],
+                        default="negotiation",
+                        help="Scenario: clean | negotiation | staggered | peak_hours")
     args = parser.parse_args()
 
     with open(args.input) as f:
